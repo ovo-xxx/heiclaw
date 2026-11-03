@@ -14,6 +14,11 @@ type (
 	StreamChunk            = protocoltypes.StreamChunk
 	UsageInfo              = protocoltypes.UsageInfo
 	FileChange             = protocoltypes.FileChange
+	TurnTokens             = protocoltypes.TurnTokens
+	LLMCallStat            = protocoltypes.LLMCallStat
+	ToolStat               = protocoltypes.ToolStat
+	TurnContextUsage       = protocoltypes.TurnContextUsage
+	TurnStats              = protocoltypes.TurnStats
 	Message                = protocoltypes.Message
 	ToolDefinition         = protocoltypes.ToolDefinition
 	ToolFunctionDefinition = protocoltypes.ToolFunctionDefinition

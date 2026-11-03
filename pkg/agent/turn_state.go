@@ -93,6 +93,18 @@ type turnResult struct {
 // ActiveTurnInfo - public info about an active turn
 // =============================================================================
 
+const (
+	// maxRecordedLLMCalls caps the per-call list kept in one turn's stats. A turn
+	// this many calls deep is already pathological, and session JSONL lines are
+	// size-capped, so calls beyond it still count in the totals but are reported
+	// through dropped_llm_call_count.
+	maxRecordedLLMCalls = 50
+
+	// maxRecordedToolStats caps the per-tool list in the same payload for the
+	// same reason.
+	maxRecordedToolStats = 40
+)
+
 type ActiveTurnInfo struct {
 	TurnID       string
 	AgentID      string
@@ -108,9 +120,53 @@ type ActiveTurnInfo struct {
 	ChildTurnIDs []string
 }
 
+// llmCallMetrics collects the per-call signals that only exist in-process: how
+// the call streamed and which candidate answered it.
+type llmCallMetrics struct {
+	// provider is the config provider key of the candidate that answered.
+	provider string
+	// fallbackAttempt is the 1-based position in the fallback chain that
+	// succeeded; 0 means the primary candidate (or no chain) answered.
+	fallbackAttempt int
+	// chunks / ttftMS describe the streamed attempt, if there was one. A stream
+	// that failed and was re-issued as a plain completion is already tracked by
+	// turnExecution.streamingFallback.
+	chunks int
+	ttftMS int64
+}
+
 // =============================================================================
 // turnExecution - mutable state that persists across turn loop iterations
 // =============================================================================
+
+// llmCallStat spells one completed provider response as the per-call entry of
+// the turn performance record. Latency covers the whole attempt (including the
+// stream-to-completion fallback), attempts come from llmCallMetrics.
+func llmCallStat(
+	exec *turnExecution,
+	iteration int,
+	attempts int,
+	latency time.Duration,
+) providers.LLMCallStat {
+	stat := providers.LLMCallStat{
+		Iteration:        iteration,
+		Model:            strings.TrimSpace(exec.llmModel),
+		Provider:         exec.lastCallMetrics.provider,
+		FinishReason:     exec.response.FinishReason,
+		Tokens:           exec.response.Usage.AsTurnTokens(),
+		LatencyMS:        latency.Milliseconds(),
+		TTFTMS:           exec.lastCallMetrics.ttftMS,
+		Chunks:           exec.lastCallMetrics.chunks,
+		StreamedFallback: exec.streamingFallback,
+		FallbackAttempt:  exec.lastCallMetrics.fallbackAttempt,
+		ToolCalls:        len(exec.response.ToolCalls),
+		ContentChars:     len(exec.response.Content),
+	}
+	if attempts > 1 {
+		stat.RetryAttempt = attempts
+	}
+	return stat
+}
 
 type turnExecution struct {
 	// Core message state (accumulates throughout the turn)
@@ -148,6 +204,12 @@ type turnExecution struct {
 	gracefulTerminal    bool
 	useNativeSearch     bool
 	ownedProviders      []providers.LLMProvider
+
+	// lastCallMetrics carries the performance metrics of the LLM call that just
+	// returned (streaming timings, which fallback candidate answered). CallLLM
+	// folds it into the turn stats right after the response is validated, so it
+	// only has to survive from the call to the record site.
+	lastCallMetrics llmCallMetrics
 
 	// Phase tracking
 	phase LLMPhase
@@ -250,9 +312,15 @@ type turnState struct {
 	finishedChan    chan struct{}      // Closed when turn finishes
 
 	// Token budget tracking
-	tokenBudget      *atomic.Int64       // Shared token budget counter
-	lastFinishReason string              // Last LLM finish_reason
-	turnUsage        providers.UsageInfo // Usage summed over every LLM call in this turn
+	tokenBudget      *atomic.Int64           // Shared token budget counter
+	lastFinishReason string                  // Last LLM finish_reason
+	turnTokens       providers.TurnTokens    // Usage summed over every LLM call in this turn
+	llmCallStats     []providers.LLMCallStat // Per-call breakdown, capped at maxRecordedLLMCalls
+	llmCallCount     int                     // Calls recorded, including the dropped ones
+	droppedLLMCalls  int                     // Calls folded into turnTokens but not listed
+	streamChunks     int                     // Streamed chunks summed over all calls
+	firstChunkAt     time.Time               // First streamed chunk of the whole turn
+	turnStats        *providers.TurnStats    // Assembled once at finalize; shared by JSONL + WS
 
 	// Files this turn modified, newest change per path in first-touched order
 	fileChanges []providers.FileChange
@@ -449,7 +517,13 @@ func (ts *turnState) toolKindsSnapshot() []string {
 	return append([]string(nil), ts.toolKinds...)
 }
 
-func (ts *turnState) recordToolExecution(tool string, success bool, errorSummary string, skillNames []string) {
+func (ts *turnState) recordToolExecution(
+	tool string,
+	success bool,
+	errorSummary string,
+	skillNames []string,
+	durationMS int64,
+) {
 	tool = strings.TrimSpace(tool)
 	if tool == "" {
 		return
@@ -464,6 +538,7 @@ func (ts *turnState) recordToolExecution(tool string, success bool, errorSummary
 		Success:      success,
 		ErrorSummary: strings.TrimSpace(errorSummary),
 		SkillNames:   append([]string(nil), skillNames...),
+		DurationMS:   durationMS,
 	})
 }
 
@@ -481,6 +556,7 @@ func (ts *turnState) toolExecutionsSnapshot() []ToolExecutionRecord {
 			Success:      exec.Success,
 			ErrorSummary: exec.ErrorSummary,
 			SkillNames:   append([]string(nil), exec.SkillNames...),
+			DurationMS:   exec.DurationMS,
 		})
 	}
 	return out
@@ -884,27 +960,118 @@ func (ts *turnState) SetLastFinishReason(reason string) {
 
 // GetTurnUsage returns token usage summed over every LLM call in this turn, or
 // nil when nothing was recorded. A turn with tool loops makes several calls, so
-// per-call usage understates what the turn actually cost.
+// per-call usage understates what the turn actually cost. The detailed
+// per-call breakdown lives in GetTurnStats.
 func (ts *turnState) GetTurnUsage() *providers.UsageInfo {
 	ts.mu.RLock()
 	defer ts.mu.RUnlock()
-	if ts.turnUsage.PromptTokens == 0 && ts.turnUsage.CompletionTokens == 0 {
+	if ts.turnTokens.InputTokens == 0 && ts.turnTokens.OutputTokens == 0 {
 		return nil
 	}
-	usage := ts.turnUsage
-	return &usage
+	return &providers.UsageInfo{
+		PromptTokens:     ts.turnTokens.InputTokens,
+		CompletionTokens: ts.turnTokens.OutputTokens,
+		TotalTokens:      ts.turnTokens.TotalTokens,
+	}
 }
 
-// RecordUsage folds one LLM call's usage into the turn total.
-func (ts *turnState) RecordUsage(usage *providers.UsageInfo) {
-	if usage == nil {
+// RecordLLMCall accounts for one completed LLM call of this turn: it folds the
+// call's tokens into the turn total and appends the per-call entry.
+//
+// Session JSONL is append-only and read with a per-line size cap, so the listed
+// calls stop at maxRecordedLLMCalls; the totals keep accumulating and the extra
+// calls are counted in dropped_llm_call_count instead of being dropped silently.
+func (ts *turnState) RecordLLMCall(call providers.LLMCallStat) {
+	ts.mu.Lock()
+	defer ts.mu.Unlock()
+
+	call.Index = ts.llmCallCount
+	ts.llmCallCount++
+	ts.turnTokens.Add(call.Tokens)
+	if call.Chunks > 0 {
+		ts.streamChunks += call.Chunks
+	}
+	if len(ts.llmCallStats) < maxRecordedLLMCalls {
+		ts.llmCallStats = append(ts.llmCallStats, call)
+	} else {
+		ts.droppedLLMCalls++
+	}
+}
+
+// RecordStreamChunkTiming notes when the first streamed chunk of this turn
+// arrived, so time-to-first-token can be measured from the turn start rather
+// than from a single call.
+func (ts *turnState) RecordStreamChunkTiming(firstChunkAt time.Time) {
+	if firstChunkAt.IsZero() {
 		return
 	}
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
-	ts.turnUsage.PromptTokens += usage.PromptTokens
-	ts.turnUsage.CompletionTokens += usage.CompletionTokens
-	ts.turnUsage.TotalTokens += usage.TotalTokens
+	if ts.firstChunkAt.IsZero() {
+		ts.firstChunkAt = firstChunkAt
+	}
+}
+
+// GetTurnStats returns the assembled performance record of this turn, or nil
+// when no provider reported any token for it — the same rule the REST usage
+// helper already applies, so a turn without usage carries no stats object at all.
+// It is built once and cached, so the session JSONL, the pico WebSocket payload
+// and the REST transcript all describe the same numbers (including duration)
+// instead of three snapshots taken at different moments. Pass the context usage
+// snapshot to attach; later calls reuse the cached value.
+func (ts *turnState) GetTurnStats(contextUsage *bus.ContextUsage) *providers.TurnStats {
+	ts.mu.Lock()
+	defer ts.mu.Unlock()
+	if ts.turnStats != nil {
+		return ts.turnStats
+	}
+	if ts.turnTokens.IsZero() {
+		return nil
+	}
+
+	stats := &providers.TurnStats{
+		LLMCallCount:        ts.llmCallCount,
+		DroppedLLMCallCount: ts.droppedLLMCalls,
+		ToolIterations:      ts.iteration,
+		StreamChunks:        ts.streamChunks,
+		Tokens:              ts.turnTokens,
+		FinishReason:        ts.lastFinishReason,
+		LLMCalls:            append([]providers.LLMCallStat(nil), ts.llmCallStats...),
+	}
+	if !ts.startedAt.IsZero() {
+		stats.DurationMS = time.Since(ts.startedAt).Milliseconds()
+	}
+	if !ts.firstChunkAt.IsZero() && !ts.startedAt.IsZero() && ts.firstChunkAt.After(ts.startedAt) {
+		stats.TimeToFirstTokenMS = ts.firstChunkAt.Sub(ts.startedAt).Milliseconds()
+	}
+	if len(ts.toolExecutions) > 0 {
+		tools := make([]providers.ToolStat, 0, len(ts.toolExecutions))
+		for _, exec := range ts.toolExecutions {
+			if len(tools) >= maxRecordedToolStats {
+				stats.DroppedToolCount = len(ts.toolExecutions) - len(tools)
+				break
+			}
+			tools = append(tools, providers.ToolStat{
+				Name:       exec.Name,
+				OK:         exec.Success,
+				DurationMS: exec.DurationMS,
+			})
+		}
+		stats.Tools = tools
+	}
+	if contextUsage != nil {
+		stats.ContextUsage = &providers.TurnContextUsage{
+			UsedTokens:        contextUsage.UsedTokens,
+			TotalTokens:       contextUsage.TotalTokens,
+			HistoryTokens:     contextUsage.HistoryTokens,
+			CompressAtTokens:  contextUsage.CompressAtTokens,
+			SummarizeAtTokens: contextUsage.SummarizeAtTokens,
+			UsedPercent:       contextUsage.UsedPercent,
+		}
+	}
+
+	ts.turnStats = stats
+	return stats
 }
 
 // RecordFileChange keeps the newest change for a path, in first-touched order:

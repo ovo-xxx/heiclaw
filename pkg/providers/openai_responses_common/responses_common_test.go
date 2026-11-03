@@ -577,3 +577,51 @@ func TestTranslateTools_SerializesToJSON(t *testing.T) {
 		t.Errorf("JSON should contain web_search, got: %s", s)
 	}
 }
+
+// Cached input is a subset of input_tokens on the wire; the adapter moves it out
+// of PromptTokens so the three input dimensions stay additive, and the reasoning
+// breakdown survives instead of being dropped.
+func TestParseResponseBodyUsageBreakdown(t *testing.T) {
+	body := strings.NewReader(fmt.Sprintf(`{
+		"id": "resp_usage",
+		"object": "response",
+		"status": "%s",
+		"output": [
+			{
+				"type": "message",
+				"content": [{"type": "output_text", "text": "ok"}]
+			}
+		],
+		"usage": {
+			"input_tokens": 1000,
+			"output_tokens": 200,
+			"total_tokens": 1200,
+			"input_tokens_details": {"cached_tokens": 640},
+			"output_tokens_details": {"reasoning_tokens": 120}
+		}
+	}`, string(responses.ResponseStatusCompleted)))
+
+	result, err := ParseResponseBody(body)
+	if err != nil {
+		t.Fatalf("ParseResponseBody error: %v", err)
+	}
+	if result.Usage == nil {
+		t.Fatal("Usage should not be nil")
+	}
+	if result.Usage.PromptTokens != 360 {
+		t.Errorf("PromptTokens = %d, want 360 (1000 minus the 640 cached)", result.Usage.PromptTokens)
+	}
+	if result.Usage.CacheReadTokens != 640 {
+		t.Errorf("CacheReadTokens = %d, want 640", result.Usage.CacheReadTokens)
+	}
+	if result.Usage.ReasoningTokens != 120 {
+		t.Errorf("ReasoningTokens = %d, want 120", result.Usage.ReasoningTokens)
+	}
+	if result.Usage.TotalTokens != 1200 {
+		t.Errorf("TotalTokens = %d, want the reported 1200", result.Usage.TotalTokens)
+	}
+	if got := result.Usage.PromptTokens + result.Usage.CacheReadTokens +
+		result.Usage.CacheCreationTokens + result.Usage.CompletionTokens; got != result.Usage.TotalTokens {
+		t.Errorf("input dimensions sum to %d, want %d", got, result.Usage.TotalTokens)
+	}
+}

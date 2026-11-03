@@ -41,6 +41,10 @@ func (p *Pipeline) Finalize(
 
 	ts.setPhase(TurnPhaseFinalizing)
 	ts.setFinalContent(finalContent)
+	// Snapshot the context window once, before the answer is appended, so the
+	// persisted turn_stats, the streamed context_usage and the final edit all
+	// carry the same numbers.
+	contextUsage := computeContextUsage(ts.agent, ts.sessionKey)
 	if !ts.opts.NoHistory {
 		finalMsg := providers.Message{
 			Role:             "assistant",
@@ -49,6 +53,7 @@ func (p *Pipeline) Finalize(
 			ReasoningContent: responseReasoningContent(exec.response),
 			Usage:            ts.GetTurnUsage(),
 			FileChanges:      ts.GetFileChanges(),
+			Stats:            ts.GetTurnStats(contextUsage),
 		}
 		ts.agent.Sessions.AddFullMessage(ts.sessionKey, finalMsg)
 		ts.recordPersistedMessage(finalMsg)
@@ -78,7 +83,6 @@ func (p *Pipeline) Finalize(
 		)
 	}
 
-	contextUsage := computeContextUsage(ts.agent, ts.sessionKey)
 	streamErr := finalizeConfiguredStreamingLLM(turnCtx, ts, exec, finalContent, contextUsage)
 	// If streaming never became visible, keep the legacy Pico interim publish path
 	// so the final answer is still delivered outside normal SendResponse.

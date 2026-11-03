@@ -150,14 +150,26 @@ func TestChat_Success(t *testing.T) {
 	if resp.Usage == nil {
 		t.Fatal("Usage should not be nil")
 	}
-	if resp.Usage.PromptTokens != 110 { // 10 + 100 + 0
-		t.Errorf("PromptTokens = %d, want 110", resp.Usage.PromptTokens)
+	// Cache tokens keep their own dimension instead of being folded into
+	// PromptTokens, and the CLI's price report survives: the three input
+	// dimensions sum to TotalTokens.
+	if resp.Usage.PromptTokens != 10 {
+		t.Errorf("PromptTokens = %d, want 10", resp.Usage.PromptTokens)
 	}
 	if resp.Usage.CompletionTokens != 5 {
 		t.Errorf("CompletionTokens = %d, want 5", resp.Usage.CompletionTokens)
 	}
-	if resp.Usage.TotalTokens != 115 { // 110 + 5
+	if resp.Usage.CacheCreationTokens != 100 {
+		t.Errorf("CacheCreationTokens = %d, want 100", resp.Usage.CacheCreationTokens)
+	}
+	if resp.Usage.CacheReadTokens != 0 {
+		t.Errorf("CacheReadTokens = %d, want 0", resp.Usage.CacheReadTokens)
+	}
+	if resp.Usage.TotalTokens != 115 { // 10 + 100 + 0 + 5
 		t.Errorf("TotalTokens = %d, want 115", resp.Usage.TotalTokens)
+	}
+	if resp.Usage.CostUSD != 0.005 {
+		t.Errorf("CostUSD = %v, want 0.005", resp.Usage.CostUSD)
 	}
 }
 

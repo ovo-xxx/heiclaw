@@ -36,6 +36,10 @@ type ToolExecutionRecord struct {
 	Success      bool     `json:"success"`
 	ErrorSummary string   `json:"error_summary,omitempty"`
 	SkillNames   []string `json:"skill_names,omitempty"`
+	// DurationMS is the wall time the tool ran, measured at the call site. It
+	// used to exist only in the runtime ToolExecEnd event and never reached the
+	// turn record.
+	DurationMS int64 `json:"duration_ms,omitempty"`
 }
 
 // TurnEndPayload describes the completion of a turn.

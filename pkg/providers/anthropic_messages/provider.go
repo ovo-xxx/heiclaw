@@ -371,7 +371,13 @@ func parseResponseBody(body []byte) (*LLMResponse, error) {
 		Usage: &UsageInfo{
 			PromptTokens:     int(resp.Usage.InputTokens),
 			CompletionTokens: int(resp.Usage.OutputTokens),
-			TotalTokens:      int(resp.Usage.InputTokens + resp.Usage.OutputTokens),
+			// Anthropic bills cache reads and cache writes apart from input_tokens,
+			// so they keep their own dimension and are summed into total.
+			CacheReadTokens:     resp.Usage.CacheReadInputTokens,
+			CacheCreationTokens: resp.Usage.CacheCreationInputTokens,
+			ReasoningTokens:     resp.Usage.OutputTokensDetails.ThinkingTokens,
+			TotalTokens: int(resp.Usage.InputTokens) + resp.Usage.CacheReadInputTokens +
+				resp.Usage.CacheCreationInputTokens + int(resp.Usage.OutputTokens),
 		},
 	}, nil
 }
@@ -397,6 +403,12 @@ type contentBlock struct {
 }
 
 type usageInfo struct {
-	InputTokens  int64 `json:"input_tokens"`
-	OutputTokens int64 `json:"output_tokens"`
+	InputTokens  int `json:"input_tokens"`
+	OutputTokens int `json:"output_tokens"`
+	// Cache dimensions are additional to input_tokens in the Anthropic API.
+	CacheReadInputTokens     int `json:"cache_read_input_tokens"`
+	CacheCreationInputTokens int `json:"cache_creation_input_tokens"`
+	OutputTokensDetails      struct {
+		ThinkingTokens int `json:"thinking_tokens"`
+	} `json:"output_tokens_details"`
 }

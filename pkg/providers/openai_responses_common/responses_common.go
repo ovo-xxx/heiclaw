@@ -261,10 +261,23 @@ func parseResponse(apiResp *responses.Response) *protocoltypes.LLMResponse {
 
 	var usage *protocoltypes.UsageInfo
 	if apiResp.Usage.TotalTokens > 0 {
+		// OpenAI reports cached input as a subset of input_tokens, so the cached
+		// part is moved out of PromptTokens rather than added to the total; the
+		// input dimensions still sum to the reported total_tokens.
+		inputTokens := int(apiResp.Usage.InputTokens)
+		cachedTokens := int(apiResp.Usage.InputTokensDetails.CachedTokens)
+		if cachedTokens < 0 {
+			cachedTokens = 0
+		}
+		if cachedTokens > inputTokens {
+			cachedTokens = inputTokens
+		}
 		usage = &protocoltypes.UsageInfo{
-			PromptTokens:     int(apiResp.Usage.InputTokens),
+			PromptTokens:     inputTokens - cachedTokens,
 			CompletionTokens: int(apiResp.Usage.OutputTokens),
 			TotalTokens:      int(apiResp.Usage.TotalTokens),
+			CacheReadTokens:  cachedTokens,
+			ReasoningTokens:  int(apiResp.Usage.OutputTokensDetails.ReasoningTokens),
 		}
 	}
 

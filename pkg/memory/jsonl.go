@@ -49,6 +49,9 @@ type SessionMeta struct {
 	UpdatedAt time.Time       `json:"updated_at"`
 	Scope     json.RawMessage `json:"scope,omitempty"`
 	Aliases   []string        `json:"aliases,omitempty"`
+	// Model is the per-session model override. Empty means the session
+	// follows the agent's configured model and routing.
+	Model string `json:"model,omitempty"`
 }
 
 // JSONLStore implements Store using append-only JSONL files.
@@ -218,6 +221,31 @@ func (s *JSONLStore) UpsertSessionMeta(
 	}
 	meta.Scope = cloneRawJSON(scope)
 	meta.Aliases = normalizeAliases(sessionKey, aliases)
+	now := time.Now()
+	if meta.CreatedAt.IsZero() {
+		meta.CreatedAt = now
+	}
+	meta.UpdatedAt = now
+
+	return s.writeMeta(sessionKey, meta)
+}
+
+// SetSessionModel stores the per-session model override. An empty model
+// clears the override so the session follows the agent's configured model.
+func (s *JSONLStore) SetSessionModel(_ context.Context, sessionKey, model string) error {
+	l := s.sessionLock(sessionKey)
+	l.Lock()
+	defer l.Unlock()
+
+	meta, err := s.readMeta(sessionKey)
+	if err != nil {
+		return err
+	}
+	model = strings.TrimSpace(model)
+	if meta.Model == model {
+		return nil
+	}
+	meta.Model = model
 	now := time.Now()
 	if meta.CreatedAt.IsZero() {
 		meta.CreatedAt = now

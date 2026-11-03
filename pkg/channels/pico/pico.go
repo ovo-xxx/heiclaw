@@ -537,6 +537,7 @@ type picoStreamer struct {
 	turnInputTokens  int
 	turnOutputTokens int
 	fileChanges      []providers.FileChange
+	turnStats        *providers.TurnStats
 	messageID        string
 	reasoningID      string
 	throttleInterval time.Duration
@@ -579,6 +580,18 @@ func (s *picoStreamer) SetFileChanges(changes []providers.FileChange) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.fileChanges = append([]providers.FileChange(nil), changes...)
+}
+
+// SetTurnStats records the detailed performance record of the turn, emitted with
+// the final message under the same "turn_stats" key and shape the session REST
+// API serves, so the panel reads one contract for live and replayed turns.
+func (s *picoStreamer) SetTurnStats(stats *providers.TurnStats) {
+	if s == nil {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.turnStats = stats
 }
 
 func (s *picoStreamer) Update(ctx context.Context, content string) error {
@@ -675,6 +688,16 @@ func (s *picoStreamer) updateReasoningLocked(ctx context.Context, content string
 	return s.sendReasoningLocked(ctx, content)
 }
 
+// attachTurnResultPayload adds the per-turn blocks a finished turn carries: token
+// usage, changed files and the detailed performance record. The create and the
+// edit branch both go through here, so a completed turn exposes the same keys
+// whichever path delivered it. The caller must hold s.mu.
+func (s *picoStreamer) attachTurnResultPayload(payload map[string]any) {
+	setTurnUsagePayload(payload, s.turnInputTokens, s.turnOutputTokens)
+	setFileChangesPayload(payload, s.fileChanges)
+	setTurnStatsPayload(payload, s.turnStats)
+}
+
 func (s *picoStreamer) sendLocked(ctx context.Context, content string, contextUsage *bus.ContextUsage) error {
 	now := time.Now()
 	contentLen := len([]rune(content))
@@ -689,8 +712,7 @@ func (s *picoStreamer) sendLocked(ctx context.Context, content string, contextUs
 			payload[PayloadKeyModelName] = s.modelName
 		}
 		setContextUsagePayload(payload, contextUsage)
-		setTurnUsagePayload(payload, s.turnInputTokens, s.turnOutputTokens)
-		setFileChangesPayload(payload, s.fileChanges)
+		s.attachTurnResultPayload(payload)
 		outMsg := newMessage(TypeMessageCreate, payload)
 		if err := s.channel.broadcast(s.chatID, outMsg); err != nil {
 			return err
@@ -703,8 +725,7 @@ func (s *picoStreamer) sendLocked(ctx context.Context, content string, contextUs
 		if s.modelName != "" {
 			payload[PayloadKeyModelName] = s.modelName
 		}
-		setTurnUsagePayload(payload, s.turnInputTokens, s.turnOutputTokens)
-		setFileChangesPayload(payload, s.fileChanges)
+		s.attachTurnResultPayload(payload)
 		if err := s.channel.editMessagePayload(ctx, s.chatID, s.messageID, payload, contextUsage); err != nil {
 			return err
 		}
@@ -1241,6 +1262,13 @@ func (c *PicoChannel) handleMessageSend(pc *picoConn, msg PicoMessage) {
 		"conn_id":    pc.id,
 	}
 
+	// A panel message may pin the model for this session. The key is sent only
+	// by the web panel, so other channels never carry an override.
+	if raw, pinned := msg.Payload[PayloadKeyModelName]; pinned {
+		model, _ := raw.(string)
+		metadata["model_override"] = strings.TrimSpace(model)
+	}
+
 	logger.DebugCF("pico", "Received message", map[string]any{
 		"session_id": sessionID,
 		"preview":    truncate(content, 50),
@@ -1464,6 +1492,17 @@ func setFileChangesPayload(payload map[string]any, changes []providers.FileChang
 		return
 	}
 	payload[PayloadKeyFileChanges] = changes
+}
+
+// setTurnStatsPayload attaches the turn's detailed performance record. It is the
+// providers.TurnStats struct itself, so the WebSocket keys are byte-for-byte the
+// REST keys (snake_case, one contract). Omitted when the turn never reached an
+// LLM response.
+func setTurnStatsPayload(payload map[string]any, stats *providers.TurnStats) {
+	if stats == nil {
+		return
+	}
+	payload[PayloadKeyTurnStats] = stats
 }
 
 func picoToolCallsPayload(msg bus.OutboundMessage) ([]utils.VisibleToolCall, bool) {

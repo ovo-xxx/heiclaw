@@ -107,6 +107,8 @@ type processOptions struct {
 	SuppressToolFeedback    bool                   // Whether to suppress inline tool feedback messages
 	NoHistory               bool                   // If true, don't load session history (for heartbeat)
 	SkipInitialSteeringPoll bool                   // If true, skip the steering poll at loop start (used by Continue)
+	ModelOverride    string // Per-message model pin from the web panel; "" is a meaningful value
+	ModelOverrideSet bool   // True when the message carried the field at all: distinguishes "clear the pin" from "say nothing"
 	InboundContext          *bus.InboundContext    // Normalized inbound facts for events/hooks
 	RouteResult             *routing.ResolvedRoute // Route decision snapshot for events/hooks
 	SessionScope            *session.SessionScope  // Session scope snapshot for events/hooks

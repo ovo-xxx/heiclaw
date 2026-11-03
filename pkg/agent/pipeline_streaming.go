@@ -67,6 +67,7 @@ func (p *Pipeline) tryConfiguredStreamingLLM(
 	chunkCount := 0
 	firstChunkAt := time.Time{}
 	lastChunkAt := time.Time{}
+	callStartAt := time.Now()
 	recordChunk := func() {
 		now := time.Now()
 		chunkCount++
@@ -108,6 +109,18 @@ func (p *Pipeline) tryConfiguredStreamingLLM(
 		)
 	}
 	logConfiguredStreamingSummary(ts, exec, chunkCount, firstChunkAt, lastChunkAt, streamErr)
+	// Carry the streaming metrics of this attempt over to the turn stats recorder.
+	// They used to be debug-log only, which is why time-to-first-token and the
+	// chunk count never reached the panel.
+	if exec != nil {
+		exec.lastCallMetrics.chunks = chunkCount
+		if !firstChunkAt.IsZero() {
+			exec.lastCallMetrics.ttftMS = firstChunkAt.Sub(callStartAt).Milliseconds()
+		}
+	}
+	if ts != nil && !firstChunkAt.IsZero() {
+		ts.RecordStreamChunkTiming(firstChunkAt)
+	}
 	if streamErr == nil {
 		if updateErr := publisher.Err(); updateErr != nil {
 			logFields := map[string]any{
@@ -131,6 +144,8 @@ func (p *Pipeline) tryConfiguredStreamingLLM(
 			)
 			if err == nil && fallbackResponse != nil {
 				exec.streamingFallback = true
+				exec.lastCallMetrics.chunks = 0
+				exec.lastCallMetrics.ttftMS = 0
 			}
 			return fallbackResponse, true, err
 		}
@@ -153,6 +168,8 @@ func (p *Pipeline) tryConfiguredStreamingLLM(
 			)
 			if err == nil && fallbackResponse != nil {
 				exec.streamingFallback = true
+				exec.lastCallMetrics.chunks = 0
+				exec.lastCallMetrics.ttftMS = 0
 			}
 			return fallbackResponse, true, err
 		}
@@ -455,6 +472,13 @@ func (p *streamingChunkPublisher) Finalize(ctx context.Context, content string, 
 	if changes := p.ts.GetFileChanges(); len(changes) > 0 {
 		if setter, ok := p.streamer.(interface{ SetFileChanges([]providers.FileChange) }); ok {
 			setter.SetFileChanges(changes)
+		}
+	}
+	// Same object the JSONL record was written with (GetTurnStats caches), so the
+	// streamed turn and the replayed history report identical numbers.
+	if stats := p.ts.GetTurnStats(contextUsage); stats != nil {
+		if setter, ok := p.streamer.(interface{ SetTurnStats(*providers.TurnStats) }); ok {
+			setter.SetTurnStats(stats)
 		}
 	}
 	var err error

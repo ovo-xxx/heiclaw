@@ -187,6 +187,16 @@ func (p *Pipeline) CallLLM(
 		al.activeRequestsInc()
 		defer al.activeRequestsDec()
 
+		// Fresh per-attempt performance metrics. Streaming and the fallback chain
+		// fill them in as the call runs; CallLLM folds them into the turn stats as
+		// soon as a response is accepted.
+		exec.lastCallMetrics = llmCallMetrics{
+			provider: strings.TrimSpace(resolvedCandidateProvider(
+				exec.activeCandidates,
+				p.Cfg.Agents.Defaults.Provider,
+			)),
+		}
+
 		if response, handled, streamErr := p.tryConfiguredStreamingLLM(
 			providerCtx,
 			ts,
@@ -287,6 +297,12 @@ func (p *Pipeline) CallLLM(
 				)
 				break
 			}
+			// Which candidate answered, and how many had to fail first. This used
+			// to be log-only.
+			if fbResult.Provider != "" {
+				exec.lastCallMetrics.provider = strings.TrimSpace(fbResult.Provider)
+			}
+			exec.lastCallMetrics.fallbackAttempt = len(fbResult.Attempts) + 1
 			return fbResult.Response, nil
 		}
 		return exec.activeProvider.Chat(providerCtx, messagesForCall, toolDefsForCall, exec.llmModel, exec.llmOpts)
@@ -302,8 +318,18 @@ func (p *Pipeline) CallLLM(
 	if backoffSecs <= 0 {
 		backoffSecs = 2
 	}
+	// llmCallAttempts / llmCallLatency describe the attempt that finally
+	// succeeded, so the per-call stats can say whether a retry or a fallback
+	// produced the response.
+	var (
+		llmCallAttempts int
+		llmCallLatency  time.Duration
+	)
 	for retry := 0; retry <= maxRetries; retry++ {
+		llmCallAttempts = retry + 1
+		callStartedAt := time.Now()
 		exec.response, err = callLLM(exec.callMessages, exec.providerToolDefs)
+		llmCallLatency = time.Since(callStartedAt)
 		if err == nil {
 			break
 		}
@@ -540,7 +566,7 @@ func (p *Pipeline) CallLLM(
 	// what the streaming publisher reads via GetTurnUsage at finalize.
 	if ts != nil {
 		ts.SetLastFinishReason(exec.response.FinishReason)
-		ts.RecordUsage(exec.response.Usage)
+		ts.RecordLLMCall(llmCallStat(exec, iteration, llmCallAttempts, llmCallLatency))
 	}
 
 	if exec.suppressReasoning {

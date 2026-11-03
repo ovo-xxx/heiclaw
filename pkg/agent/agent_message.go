@@ -193,6 +193,11 @@ func (al *AgentLoop) processMessage(ctx context.Context, msg bus.InboundMessage)
 		SendResponse:            false,
 		AllowInterimPicoPublish: true,
 	}
+	if raw, ok := msg.Context.Raw["model_override"]; ok {
+		opts.ModelOverride = strings.TrimSpace(raw)
+		opts.ModelOverrideSet = true
+	}
+
 	var err error
 	opts, err = resolveTurnProfileOptions(al.GetConfig(), opts)
 	if err != nil {

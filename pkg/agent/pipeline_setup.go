@@ -8,6 +8,7 @@ import (
 
 	"github.com/sipeed/picoclaw/pkg/logger"
 	"github.com/sipeed/picoclaw/pkg/providers"
+	"github.com/sipeed/picoclaw/pkg/session"
 )
 
 // SetupTurn extracts the one-time initialization phase, returning a
@@ -159,5 +160,70 @@ func (p *Pipeline) SetupTurn(ctx context.Context, ts *turnState) (*turnExecution
 	exec.activeProvider = activeProvider
 	exec.usedLight = usedLight
 
+	p.applySessionModelOverride(ts, exec)
+
 	return exec, nil
+}
+
+// applySessionModelOverride switches the turn to the model pinned for this
+// session by the web panel. A per-message pin wins and is persisted, so the
+// next turn keeps it; with no pin in the message the stored one is used. It
+// runs at turn setup, so agent routing picks the light model only for sessions
+// without a pin, and a before_llm hook can still change the model later in the
+// turn. An unresolvable pin is logged and the agent's own model stands, so a
+// stale pin never blocks a conversation.
+func (p *Pipeline) applySessionModelOverride(ts *turnState, exec *turnExecution) {
+	if p == nil || ts == nil || ts.agent == nil || exec == nil {
+		return
+	}
+	modelStore, ok := ts.agent.Sessions.(session.MetadataAwareSessionStore)
+	if !ok {
+		return
+	}
+
+	pinned := strings.TrimSpace(ts.opts.ModelOverride)
+	stored := strings.TrimSpace(modelStore.GetSessionModel(ts.sessionKey))
+	if ts.opts.ModelOverrideSet && pinned == "" {
+		// The panel said "follow the agent default": drop the stored pin so a
+		// later turn cannot revive it.
+		if stored != "" {
+			modelStore.SetSessionModel(ts.sessionKey, "")
+		}
+		return
+	}
+	model := pinned
+	if model == "" {
+		model = stored
+	}
+	if model == "" || model == strings.TrimSpace(exec.llmModelName) {
+		return
+	}
+	// A name that is not in model_list still resolves to a bare candidate on the
+	// default provider, which then fails every call. Reject it here so one bad
+	// pin cannot brick a conversation, the same way `switch model` does.
+	if _, err := providers.ResolveModelConfig(p.Cfg, model); err != nil {
+		logger.WarnCF("agent", "Ignored session model override", map[string]any{
+			"session_key": ts.sessionKey,
+			"model":       model,
+			"error":       err.Error(),
+		})
+		return
+	}
+	if pinned != "" && pinned != stored {
+		modelStore.SetSessionModel(ts.sessionKey, pinned)
+	}
+
+	exec.llmModel = model
+	if err := p.applyBeforeLLMModelRewrite(ts, exec); err != nil {
+		logger.WarnCF("agent", "Ignored session model override", map[string]any{
+			"session_key": ts.sessionKey,
+			"model":       model,
+			"error":       err.Error(),
+		})
+		return
+	}
+	exec.llmModelName = strings.TrimSpace(exec.activeModel)
+	if exec.llmModelName == "" {
+		exec.llmModelName = model
+	}
 }

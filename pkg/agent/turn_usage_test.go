@@ -8,8 +8,12 @@ import (
 
 func TestRecordUsageAccumulatesAcrossLLMCalls(t *testing.T) {
 	ts := &turnState{}
-	ts.RecordUsage(&providers.UsageInfo{PromptTokens: 100, CompletionTokens: 20, TotalTokens: 120})
-	ts.RecordUsage(&providers.UsageInfo{PromptTokens: 150, CompletionTokens: 30, TotalTokens: 180})
+	ts.RecordLLMCall(providers.LLMCallStat{
+		Tokens: providers.TurnTokens{InputTokens: 100, OutputTokens: 20, TotalTokens: 120},
+	})
+	ts.RecordLLMCall(providers.LLMCallStat{
+		Tokens: providers.TurnTokens{InputTokens: 150, OutputTokens: 30, TotalTokens: 180},
+	})
 
 	usage := ts.GetTurnUsage()
 	if usage == nil {
@@ -29,9 +33,12 @@ func TestRecordUsageAccumulatesAcrossLLMCalls(t *testing.T) {
 
 func TestGetTurnUsageNilWhenNothingRecorded(t *testing.T) {
 	ts := &turnState{}
-	ts.RecordUsage(nil)
+	ts.RecordLLMCall(providers.LLMCallStat{})
 	if got := ts.GetTurnUsage(); got != nil {
 		t.Fatalf("GetTurnUsage() = %+v, want nil", got)
+	}
+	if stats := ts.GetTurnStats(nil); stats != nil {
+		t.Fatalf("GetTurnStats() = %+v, want nil for a call that reported nothing", stats)
 	}
 }
 

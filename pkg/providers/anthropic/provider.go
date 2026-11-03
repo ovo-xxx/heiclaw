@@ -391,7 +391,13 @@ func parseResponse(resp *anthropic.Message) *LLMResponse {
 		Usage: &UsageInfo{
 			PromptTokens:     int(resp.Usage.InputTokens),
 			CompletionTokens: int(resp.Usage.OutputTokens),
-			TotalTokens:      int(resp.Usage.InputTokens + resp.Usage.OutputTokens),
+			// Anthropic bills cache reads and cache writes apart from input_tokens,
+			// so they are reported as their own dimensions and summed into total.
+			CacheReadTokens:     int(resp.Usage.CacheReadInputTokens),
+			CacheCreationTokens: int(resp.Usage.CacheCreationInputTokens),
+			ReasoningTokens:     int(resp.Usage.OutputTokensDetails.ThinkingTokens),
+			TotalTokens: int(resp.Usage.InputTokens + resp.Usage.CacheReadInputTokens +
+				resp.Usage.CacheCreationInputTokens + resp.Usage.OutputTokens),
 		},
 	}
 }

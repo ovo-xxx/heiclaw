@@ -23,6 +23,10 @@ type metaAwareStore interface {
 	ResolveSessionKey(ctx context.Context, sessionKey string) (string, bool, error)
 }
 
+type modelAwareStore interface {
+	SetSessionModel(ctx context.Context, sessionKey string, model string) error
+}
+
 type aliasPromotingStore interface {
 	PromoteAliasHistory(ctx context.Context, sessionKey string, scope json.RawMessage, aliases []string) (bool, error)
 }
@@ -32,6 +36,8 @@ type MetadataAwareSessionStore interface {
 	EnsureSessionMetadata(sessionKey string, scope *SessionScope, aliases []string)
 	ResolveSessionKey(sessionKey string) string
 	GetSessionScope(sessionKey string) *SessionScope
+	GetSessionModel(sessionKey string) string
+	SetSessionModel(sessionKey string, model string)
 }
 
 // NewJSONLBackend wraps a memory.Store for use as a SessionStore.
@@ -116,6 +122,39 @@ func (b *JSONLBackend) GetSessionScope(sessionKey string) *SessionScope {
 		return nil
 	}
 	return CloneScope(&scope)
+}
+
+// GetSessionModel returns the per-session model override, or "" when the
+// session follows the agent's configured model.
+func (b *JSONLBackend) GetSessionModel(sessionKey string) string {
+	metaStore, ok := b.store.(metaAwareStore)
+	if !ok {
+		return ""
+	}
+	sessionKey = b.resolveSessionKey(sessionKey)
+	meta, err := metaStore.GetSessionMeta(context.Background(), sessionKey)
+	if err != nil {
+		log.Printf("session: get session model: %v", err)
+		return ""
+	}
+	return strings.TrimSpace(meta.Model)
+}
+
+// SetSessionModel persists the per-session model override. An empty model
+// clears it.
+func (b *JSONLBackend) SetSessionModel(sessionKey string, model string) {
+	sessionKey = strings.TrimSpace(sessionKey)
+	if sessionKey == "" {
+		return
+	}
+	writer, ok := b.store.(modelAwareStore)
+	if !ok {
+		log.Printf("session: store does not support per-session model")
+		return
+	}
+	if err := writer.SetSessionModel(context.Background(), sessionKey, strings.TrimSpace(model)); err != nil {
+		log.Printf("session: set session model: %v", err)
+	}
 }
 
 func (b *JSONLBackend) AddMessage(sessionKey, role, content string) {

@@ -32,6 +32,7 @@ type sessionFile struct {
 	Key      string              `json:"key"`
 	Messages []providers.Message `json:"messages"`
 	Summary  string              `json:"summary,omitempty"`
+	Model    string              `json:"model,omitempty"`
 	Created  time.Time           `json:"created"`
 	Updated  time.Time           `json:"updated"`
 }
@@ -42,17 +43,22 @@ type sessionListItem struct {
 	Title        string `json:"title"`
 	Preview      string `json:"preview"`
 	MessageCount int    `json:"message_count"`
+	Model        string `json:"model,omitempty"`
 	Created      string `json:"created"`
 	Updated      string `json:"updated"`
 }
 
 type sessionChatMessage struct {
-	Role        string                  `json:"role"`
-	Content     string                  `json:"content"`
-	Kind        string                  `json:"kind,omitempty"`
-	ModelName   string                  `json:"model_name,omitempty"`
-	Usage       *sessionTurnUsage       `json:"usage,omitempty"`
-	FileChanges []providers.FileChange  `json:"file_changes,omitempty"`
+	Role        string                 `json:"role"`
+	Content     string                 `json:"content"`
+	Kind        string                 `json:"kind,omitempty"`
+	ModelName   string                 `json:"model_name,omitempty"`
+	Usage       *sessionTurnUsage      `json:"usage,omitempty"`
+	FileChanges []providers.FileChange `json:"file_changes,omitempty"`
+	// Stats is the turn's detailed performance record, passed straight through
+	// from the session JSONL: the same struct, so the same snake_case keys the
+	// pico WebSocket emits under "turn_stats".
+	Stats       *providers.TurnStats    `json:"turn_stats,omitempty"`
 	CreatedAt   *time.Time              `json:"created_at,omitempty"`
 	Media       []string                `json:"media,omitempty"`
 	Attachments []sessionChatAttachment `json:"attachments,omitempty"`
@@ -222,6 +228,7 @@ func (h *Handler) readJSONLSession(dir, sessionKey string) (sessionFile, error) 
 		Key:      meta.Key,
 		Messages: messages,
 		Summary:  meta.Summary,
+		Model:    strings.TrimSpace(meta.Model),
 		Created:  created,
 		Updated:  updated,
 	}, nil
@@ -458,6 +465,7 @@ func buildSessionListItem(sessionID string, sess sessionFile, toolFeedbackMaxArg
 		Title:        title,
 		Preview:      preview,
 		MessageCount: len(transcript),
+		Model:        sess.Model,
 		Created:      sess.Created.Format(time.RFC3339),
 		Updated:      sess.Updated.Format(time.RFC3339),
 	}
@@ -586,6 +594,7 @@ func sessionTranscriptMessages(
 				ModelName:   msg.ModelName,
 				Usage:       turnUsageFromMessageUsage(msg.Usage),
 				FileChanges: msg.FileChanges,
+				Stats:       msg.Stats,
 				CreatedAt:   msg.CreatedAt,
 				Media:       append([]string(nil), msg.Media...),
 				Attachments: attachments,
@@ -973,6 +982,7 @@ func (h *Handler) handleGetSession(w http.ResponseWriter, r *http.Request) {
 		"id":       sessionID,
 		"messages": messages,
 		"summary":  sess.Summary,
+		"model":    sess.Model,
 		"created":  sess.Created.Format(time.RFC3339),
 		"updated":  sess.Updated.Format(time.RFC3339),
 	})
