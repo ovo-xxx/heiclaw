@@ -23,6 +23,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/config"
 	"github.com/sipeed/picoclaw/pkg/identity"
 	"github.com/sipeed/picoclaw/pkg/logger"
+	"github.com/sipeed/picoclaw/pkg/providers"
 	"github.com/sipeed/picoclaw/pkg/utils"
 )
 
@@ -535,6 +536,7 @@ type picoStreamer struct {
 	modelName        string
 	turnInputTokens  int
 	turnOutputTokens int
+	fileChanges      []providers.FileChange
 	messageID        string
 	reasoningID      string
 	throttleInterval time.Duration
@@ -566,6 +568,17 @@ func (s *picoStreamer) SetTurnUsage(inputTokens, outputTokens int) {
 	defer s.mu.Unlock()
 	s.turnInputTokens = inputTokens
 	s.turnOutputTokens = outputTokens
+}
+
+// SetFileChanges records the files this turn modified, emitted with the final
+// message so the panel can show changed files without printing tool output.
+func (s *picoStreamer) SetFileChanges(changes []providers.FileChange) {
+	if s == nil {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.fileChanges = append([]providers.FileChange(nil), changes...)
 }
 
 func (s *picoStreamer) Update(ctx context.Context, content string) error {
@@ -677,6 +690,7 @@ func (s *picoStreamer) sendLocked(ctx context.Context, content string, contextUs
 		}
 		setContextUsagePayload(payload, contextUsage)
 		setTurnUsagePayload(payload, s.turnInputTokens, s.turnOutputTokens)
+		setFileChangesPayload(payload, s.fileChanges)
 		outMsg := newMessage(TypeMessageCreate, payload)
 		if err := s.channel.broadcast(s.chatID, outMsg); err != nil {
 			return err
@@ -690,6 +704,7 @@ func (s *picoStreamer) sendLocked(ctx context.Context, content string, contextUs
 			payload[PayloadKeyModelName] = s.modelName
 		}
 		setTurnUsagePayload(payload, s.turnInputTokens, s.turnOutputTokens)
+		setFileChangesPayload(payload, s.fileChanges)
 		if err := s.channel.editMessagePayload(ctx, s.chatID, s.messageID, payload, contextUsage); err != nil {
 			return err
 		}
@@ -1440,6 +1455,15 @@ func setTurnUsagePayload(payload map[string]any, inputTokens, outputTokens int) 
 		"output_tokens": outputTokens,
 		"total_tokens":  inputTokens + outputTokens,
 	}
+}
+
+// setFileChangesPayload attaches the turn's changed files. Omitted when empty so
+// replies that touched nothing keep the payload unchanged.
+func setFileChangesPayload(payload map[string]any, changes []providers.FileChange) {
+	if len(changes) == 0 {
+		return
+	}
+	payload[PayloadKeyFileChanges] = changes
 }
 
 func picoToolCallsPayload(msg bus.OutboundMessage) ([]utils.VisibleToolCall, bool) {

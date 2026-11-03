@@ -425,6 +425,7 @@ export function ChatPage() {
                     timestamp={msg.timestamp}
                     usage={msg.usage}
                     elapsedMs={elapsedMs}
+                    fileChanges={msg.fileChanges}
                   />
                 ) : (
                   <UserMessage

@@ -52,6 +52,7 @@ type sessionChatMessage struct {
 	Kind        string                  `json:"kind,omitempty"`
 	ModelName   string                  `json:"model_name,omitempty"`
 	Usage       *sessionTurnUsage       `json:"usage,omitempty"`
+	FileChanges []providers.FileChange  `json:"file_changes,omitempty"`
 	CreatedAt   *time.Time              `json:"created_at,omitempty"`
 	Media       []string                `json:"media,omitempty"`
 	Attachments []sessionChatAttachment `json:"attachments,omitempty"`
@@ -584,6 +585,7 @@ func sessionTranscriptMessages(
 				Content:     content,
 				ModelName:   msg.ModelName,
 				Usage:       turnUsageFromMessageUsage(msg.Usage),
+				FileChanges: msg.FileChanges,
 				CreatedAt:   msg.CreatedAt,
 				Media:       append([]string(nil), msg.Media...),
 				Attachments: attachments,

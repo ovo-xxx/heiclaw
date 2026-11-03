@@ -254,6 +254,9 @@ type turnState struct {
 	lastFinishReason string              // Last LLM finish_reason
 	turnUsage        providers.UsageInfo // Usage summed over every LLM call in this turn
 
+	// Files this turn modified, newest change per path in first-touched order
+	fileChanges []providers.FileChange
+
 	// Back-reference to the owning AgentLoop (set for SubTurns only, used for hard abort cascade)
 	al *AgentLoop
 }
@@ -902,6 +905,32 @@ func (ts *turnState) RecordUsage(usage *providers.UsageInfo) {
 	ts.turnUsage.PromptTokens += usage.PromptTokens
 	ts.turnUsage.CompletionTokens += usage.CompletionTokens
 	ts.turnUsage.TotalTokens += usage.TotalTokens
+}
+
+// RecordFileChange keeps the newest change for a path, in first-touched order:
+// a file edited twice shows as the net result rather than two entries.
+func (ts *turnState) RecordFileChange(change *providers.FileChange) {
+	if change == nil || change.Path == "" {
+		return
+	}
+	ts.mu.Lock()
+	defer ts.mu.Unlock()
+	for i, existing := range ts.fileChanges {
+		if existing.Path == change.Path {
+			ts.fileChanges[i] = *change
+			return
+		}
+	}
+	ts.fileChanges = append(ts.fileChanges, *change)
+}
+
+func (ts *turnState) GetFileChanges() []providers.FileChange {
+	ts.mu.RLock()
+	defer ts.mu.RUnlock()
+	if len(ts.fileChanges) == 0 {
+		return nil
+	}
+	return append([]providers.FileChange(nil), ts.fileChanges...)
 }
 
 // =============================================================================

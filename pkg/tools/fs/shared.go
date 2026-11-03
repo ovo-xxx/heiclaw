@@ -3,6 +3,7 @@ package fstools
 import (
 	"context"
 
+	"github.com/sipeed/picoclaw/pkg/providers"
 	toolshared "github.com/sipeed/picoclaw/pkg/tools/shared"
 )
 
@@ -34,6 +35,10 @@ func SilentResult(forLLM string) *ToolResult {
 
 func DiffResult(path string, before, after []byte) *ToolResult {
 	return toolshared.DiffResult(path, before, after)
+}
+
+func FileChangeFromContents(path string, before, after []byte) *providers.FileChange {
+	return toolshared.FileChangeFromContents(path, before, after)
 }
 
 func MediaResult(forLLM string, mediaRefs []string) *ToolResult {

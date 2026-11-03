@@ -55,6 +55,15 @@ type UsageInfo struct {
 	TotalTokens      int `json:"total_tokens"`
 }
 
+// FileChange describes one file a turn modified. Diff is a unified diff capped by
+// the tool that produced it; Additions/Deletions count changed lines.
+type FileChange struct {
+	Path      string `json:"path"`
+	Diff      string `json:"diff,omitempty"`
+	Additions int    `json:"additions"`
+	Deletions int    `json:"deletions"`
+}
+
 // CacheControl marks a content block for LLM-side prefix caching.
 // Currently only "ephemeral" is supported (used by Anthropic).
 type CacheControl struct {
@@ -101,6 +110,11 @@ type Message struct {
 	// (pkg/providers/common.openaiMessage) build their own message objects, so
 	// this never reaches a provider endpoint.
 	Usage *UsageInfo `json:"usage,omitempty"`
+
+	// FileChanges lists the workspace files this turn modified, with a capped
+	// unified diff. Like Usage it is display/persistence only and never sent to
+	// a provider.
+	FileChanges []FileChange `json:"file_changes,omitempty"`
 
 	// Prompt metadata is internal to the agent runtime. It records where a
 	// message or system part came from without changing provider/session JSON.

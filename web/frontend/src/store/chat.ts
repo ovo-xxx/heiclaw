@@ -46,6 +46,7 @@ export interface ChatMessage {
   kind?: AssistantMessageKind
   modelName?: string
   usage?: TurnUsage
+  fileChanges?: TurnFileChange[]
   attachments?: ChatAttachment[]
   toolCalls?: ChatToolCall[]
 }
@@ -54,6 +55,13 @@ export interface TurnUsage {
   input_tokens: number
   output_tokens: number
   total_tokens: number
+}
+
+export interface TurnFileChange {
+  path: string
+  diff?: string
+  additions: number
+  deletions: number
 }
 
 export interface ContextUsage {

@@ -28,6 +28,7 @@ import {
   type AssistantMessageKind,
   type ChatAttachment,
   type ChatToolCall,
+  type TurnFileChange,
   type TurnUsage,
 } from "@/store/chat"
 
@@ -40,6 +41,7 @@ interface AssistantMessageProps {
   timestamp?: string | number
   usage?: TurnUsage
   elapsedMs?: number
+  fileChanges?: TurnFileChange[]
 }
 
 export function AssistantMessage({
@@ -51,6 +53,7 @@ export function AssistantMessage({
   timestamp = "",
   usage,
   elapsedMs,
+  fileChanges = [],
 }: AssistantMessageProps) {
   const { t } = useTranslation()
   const { copy, isCopied } = useCopyToClipboard()
@@ -66,6 +69,14 @@ export function AssistantMessage({
     (attachment) => attachment.type !== "image",
   )
   const [isExpanded, setIsExpanded] = useState(true)
+  const [isChangesOpen, setIsChangesOpen] = useState(false)
+  const changeStats = fileChanges.reduce(
+    (acc, change) => ({
+      additions: acc.additions + change.additions,
+      deletions: acc.deletions + change.deletions,
+    }),
+    { additions: 0, deletions: 0 },
+  )
   const formattedTimestamp =
     timestamp !== "" ? formatMessageTime(timestamp) : ""
   const collapsedLabel = isThought
@@ -273,6 +284,43 @@ export function AssistantMessage({
               )}
             </Button>
           )}
+        </div>
+      )}
+
+      {!isCollapsedBlock && fileChanges.length > 0 && (
+        <div className="mt-1 flex flex-col gap-1.5">
+          <div
+            className="text-muted-foreground/60 hover:text-muted-foreground/80 flex cursor-pointer items-center justify-between rounded-xl border border-border/30 bg-muted/20 px-3 py-2 text-[12px] font-medium transition-colors select-none"
+            onClick={() => setIsChangesOpen(!isChangesOpen)}
+          >
+            <div className="flex items-center gap-1.5">
+              <IconFileText className="size-3.5" />
+              <span>{t("chat.changedFilesLabel")}</span>
+              <span className="text-muted-foreground/45">
+                {fileChanges.length}
+              </span>
+              <span className="text-muted-foreground/45">
+                +{changeStats.additions} -{changeStats.deletions}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <IconChevronDown
+                className={cn(
+                  "size-3.5 transition-transform",
+                  isChangesOpen ? "rotate-180" : "",
+                )}
+              />
+            </div>
+          </div>
+          {isChangesOpen &&
+            fileChanges.map((change) => (
+              <MessageCodeBlock
+                key={`${change.path}`}
+                code={change.diff ?? ""}
+                language="diff"
+                label={change.path}
+              />
+            ))}
         </div>
       )}
 

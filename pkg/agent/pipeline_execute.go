@@ -513,6 +513,9 @@ toolLoop:
 		toolCallID := tc.ID
 		asyncToolName := toolName
 		asyncCallback := func(_ context.Context, result *tools.ToolResult) {
+			if result != nil {
+				ts.RecordFileChange(result.FileChange)
+			}
 			if !result.Silent && result.ForUser != "" {
 				outCtx, outCancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer outCancel()
@@ -676,6 +679,7 @@ toolLoop:
 		shouldSendForUser := !toolResult.Silent &&
 			toolResult.ForUser != "" &&
 			(ts.opts.SendResponse || toolResult.ResponseHandled)
+		ts.RecordFileChange(toolResult.FileChange)
 		if shouldSendForUser {
 			al.bus.PublishOutbound(ctx, outboundMessageForTurn(ts, toolResult.ForUser))
 			logger.DebugCF("agent", "Sent tool result to user",

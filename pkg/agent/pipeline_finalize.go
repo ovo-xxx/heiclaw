@@ -48,6 +48,7 @@ func (p *Pipeline) Finalize(
 			ModelName:        exec.llmModelName,
 			ReasoningContent: responseReasoningContent(exec.response),
 			Usage:            ts.GetTurnUsage(),
+			FileChanges:      ts.GetFileChanges(),
 		}
 		ts.agent.Sessions.AddFullMessage(ts.sessionKey, finalMsg)
 		ts.recordPersistedMessage(finalMsg)

@@ -452,6 +452,11 @@ func (p *streamingChunkPublisher) Finalize(ctx context.Context, content string, 
 			setter.SetTurnUsage(usage.PromptTokens, usage.CompletionTokens)
 		}
 	}
+	if changes := p.ts.GetFileChanges(); len(changes) > 0 {
+		if setter, ok := p.streamer.(interface{ SetFileChanges([]providers.FileChange) }); ok {
+			setter.SetFileChanges(changes)
+		}
+	}
 	var err error
 	if streamer, ok := p.streamer.(bus.ContextUsageStreamer); ok {
 		err = streamer.FinalizeWithContext(ctx, content, contextUsage)

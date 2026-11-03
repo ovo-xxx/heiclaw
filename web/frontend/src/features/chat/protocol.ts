@@ -8,6 +8,7 @@ import { normalizeUnixTimestamp } from "@/features/chat/state"
 import {
   type ChatAttachment,
   type ContextUsage,
+  type TurnFileChange,
   type TurnUsage,
   updateChatStore,
 } from "@/store/chat"
@@ -94,6 +95,35 @@ function parseModelName(payload: Record<string, unknown>): string | undefined {
   return modelName || undefined
 }
 
+function parseFileChanges(
+  payload: Record<string, unknown>,
+): TurnFileChange[] | undefined {
+  const raw = payload.file_changes
+  if (!Array.isArray(raw)) {
+    return undefined
+  }
+
+  const changes: TurnFileChange[] = []
+  for (const item of raw) {
+    if (!item || typeof item !== "object") {
+      continue
+    }
+    const change = item as Record<string, unknown>
+    const path = typeof change.path === "string" ? change.path : ""
+    if (!path) {
+      continue
+    }
+    changes.push({
+      path,
+      ...(typeof change.diff === "string" ? { diff: change.diff } : {}),
+      additions: Number(change.additions) || 0,
+      deletions: Number(change.deletions) || 0,
+    })
+  }
+
+  return changes.length > 0 ? changes : undefined
+}
+
 function parseTurnUsage(
   payload: Record<string, unknown>,
 ): TurnUsage | undefined {
@@ -139,6 +169,7 @@ export function handlePicoMessage(
       const isPlaceholder = payload.placeholder === true
       const modelName = parseModelName(payload)
       const turnUsage = parseTurnUsage(payload)
+      const fileChanges = parseFileChanges(payload)
       const timestamp =
         message.timestamp !== undefined &&
         Number.isFinite(Number(message.timestamp))
@@ -155,6 +186,7 @@ export function handlePicoMessage(
             kind,
             ...(modelName ? { modelName } : {}),
             ...(turnUsage ? { usage: turnUsage } : {}),
+            ...(fileChanges ? { fileChanges } : {}),
             ...(toolCalls ? { toolCalls } : {}),
             attachments,
             timestamp,
@@ -176,6 +208,7 @@ export function handlePicoMessage(
       const contextUsage = parseContextUsage(payload)
       const modelName = parseModelName(payload)
       const turnUsage = parseTurnUsage(payload)
+      const fileChanges = parseFileChanges(payload)
       const timestamp =
         message.timestamp !== undefined &&
         Number.isFinite(Number(message.timestamp))
@@ -206,6 +239,7 @@ export function handlePicoMessage(
               ...(turnUsage
                 ? { usage: turnUsage, timestamp: Date.now() }
                 : {}),
+              ...(fileChanges ? { fileChanges } : {}),
             }
           })
           if (found) {
@@ -226,6 +260,7 @@ export function handlePicoMessage(
               ...(modelName ? { modelName } : {}),
               ...(attachments ? { attachments } : {}),
               ...(turnUsage ? { usage: turnUsage } : {}),
+              ...(fileChanges ? { fileChanges } : {}),
               timestamp,
             },
           ]

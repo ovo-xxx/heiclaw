@@ -22,6 +22,12 @@ export interface SessionDetail {
       output_tokens: number
       total_tokens: number
     }
+    file_changes?: {
+      path: string
+      diff?: string
+      additions: number
+      deletions: number
+    }[]
     media?: string[]
     attachments?: {
       type?: "image" | "audio" | "video" | "file"

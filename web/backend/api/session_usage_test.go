@@ -84,3 +84,54 @@ func TestSessionMessageOmitsEmptyUsage(t *testing.T) {
 		t.Fatalf("empty usage should be omitted: %s", encoded)
 	}
 }
+
+// Changed files follow the same path as usage: written by the agent, stored in
+// the session JSONL, and served to the panel with the diff attached.
+func TestFileChangesSurviveJSONLRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	store, err := memory.NewJSONLStore(dir)
+	if err != nil {
+		t.Fatalf("NewJSONLStore: %v", err)
+	}
+	defer store.Close()
+
+	ctx := context.Background()
+	key := "agent:main:pico:direct:pico:changes-test"
+	change := providers.FileChange{
+		Path:      "/var/lib/picoclaw/workspace/memory/MEMORY.md",
+		Diff:      "--- a/memory/MEMORY.md\n+++ b/memory/MEMORY.md\n-old\n+new",
+		Additions: 1,
+		Deletions: 1,
+	}
+
+	if err := store.AddFullMessage(ctx, key, providers.Message{
+		Role:        "assistant",
+		Content:     "已更新记忆",
+		FileChanges: []providers.FileChange{change},
+	}); err != nil {
+		t.Fatalf("AddFullMessage: %v", err)
+	}
+
+	history, err := store.GetHistory(ctx, key)
+	if err != nil {
+		t.Fatalf("GetHistory: %v", err)
+	}
+	if len(history) != 1 || len(history[0].FileChanges) != 1 {
+		t.Fatalf("file changes lost on round trip: %+v", history)
+	}
+
+	transcript := sessionTranscriptMessages(history, 0, false)
+	if len(transcript) != 1 {
+		t.Fatalf("transcript length = %d, want 1", len(transcript))
+	}
+
+	encoded, err := json.Marshal(transcript[0])
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	for _, want := range []string{`"file_changes"`, `"additions":1`, `"deletions":1`, `MEMORY.md`} {
+		if !strings.Contains(string(encoded), want) {
+			t.Fatalf("transcript JSON missing %s: %s", want, encoded)
+		}
+	}
+}

@@ -124,10 +124,16 @@ func (t *AppendFileTool) Execute(ctx context.Context, args map[string]any) *Tool
 		return ErrorResult("content is required")
 	}
 
+	before, _ := t.fs.ReadFile(path)
+
 	if err := appendFile(t.fs, path, content); err != nil {
 		return ErrorResult(err.Error())
 	}
-	return SilentResult(fmt.Sprintf("Appended to %s", path))
+
+	after, _ := t.fs.ReadFile(path)
+	result := SilentResult(fmt.Sprintf("Appended to %s", path))
+	result.FileChange = FileChangeFromContents(path, before, after)
+	return result
 }
 
 // editFile reads the file via sysFs, performs the replacement, and writes back.

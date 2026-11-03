@@ -8,6 +8,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/pmezard/go-difflib/difflib"
+
+	"github.com/sipeed/picoclaw/pkg/providers"
 )
 
 const (
@@ -26,13 +28,20 @@ const (
 // including EOF newline transitions.
 func DiffResult(path string, before, after []byte) *ToolResult {
 	summary := fmt.Sprintf("File edited: %s", path)
+	change := FileChangeFromContents(path, before, after)
 	if exceedsDiffPreviewLimits(before, after) {
-		return SilentResult(summary + "\n" + diffPreviewSkippedMessage)
+		skipped := SilentResult(summary + "\n" + diffPreviewSkippedMessage)
+		change.Diff = ""
+		skipped.FileChange = change
+		return skipped
 	}
 
 	diff, err := buildUnifiedDiff(path, before, after)
 	if err != nil {
-		return UserResult(fmt.Sprintf("%s\n[diff unavailable: %v]", summary, err))
+		failed := UserResult(fmt.Sprintf("%s\n[diff unavailable: %v]", summary, err))
+		change.Diff = ""
+		failed.FileChange = change
+		return failed
 	}
 
 	userDiff, truncated := truncateDiffPreview(diff, maxUserDiffPreviewBytes)
@@ -49,12 +58,46 @@ func DiffResult(path string, before, after []byte) *ToolResult {
 	}
 
 	return &ToolResult{
-		ForLLM:  llmContent,
-		ForUser: userContent,
-		Silent:  false,
-		IsError: false,
-		Async:   false,
+		ForLLM:     llmContent,
+		ForUser:    userContent,
+		Silent:     false,
+		IsError:    false,
+		Async:      false,
+		FileChange: change,
 	}
+}
+
+// FileChangeFromContents builds the structured change record for one edited file:
+// a capped unified diff plus line counts. Tools that stay silent toward the chat
+// (write_file, append_file) use it so the panel can still show what changed.
+func FileChangeFromContents(path string, before, after []byte) *providers.FileChange {
+	change := &providers.FileChange{Path: path}
+	if exceedsDiffPreviewLimits(before, after) {
+		return change
+	}
+	diff, err := buildUnifiedDiff(path, before, after)
+	if err != nil {
+		return change
+	}
+	change.Additions, change.Deletions = countChangedDiffLines(diff)
+	preview, _ := truncateDiffPreview(diff, maxUserDiffPreviewBytes)
+	change.Diff = preview
+	return change
+}
+
+// countChangedDiffLines counts added and removed lines in a unified diff.
+// Upstream's countDiffLines counts lines of file content, hence the separate name.
+func countChangedDiffLines(diff string) (additions, deletions int) {
+	for _, line := range strings.Split(diff, "\n") {
+		switch {
+		case strings.HasPrefix(line, "+++"), strings.HasPrefix(line, "---"):
+		case strings.HasPrefix(line, "+"):
+			additions++
+		case strings.HasPrefix(line, "-"):
+			deletions++
+		}
+	}
+	return additions, deletions
 }
 
 func buildUnifiedDiff(path string, before, after []byte) (string, error) {

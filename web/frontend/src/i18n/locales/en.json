@@ -63,6 +63,7 @@
     "toolCallsLabel": "Tool calls",
     "turnTokens": "{{input}} in · {{output}} out",
     "turnDuration": "took {{duration}}",
+    "changedFilesLabel": "Changed files",
     "toolCallExplanationLabel": "Call note",
     "toolCallFunctionLabel": "Call summary",
     "toolCallArgumentsLabel": "Arguments",

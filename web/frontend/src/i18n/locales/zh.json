@@ -63,6 +63,7 @@
     "toolCallsLabel": "工具调用",
     "turnTokens": "输入 {{input}} · 输出 {{output}}",
     "turnDuration": "用时 {{duration}}",
+    "changedFilesLabel": "改动文件",
     "toolCallExplanationLabel": "调用提示",
     "toolCallFunctionLabel": "调用摘要",
     "toolCallArgumentsLabel": "参数",

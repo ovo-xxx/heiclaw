@@ -50,6 +50,11 @@ type ToolResult struct {
 	// to carry stateful worker context across evaluation iterations.
 	Messages []providers.Message `json:"-"`
 
+	// FileChange records one workspace file this tool modified. The panel reads
+	// it to show changed files with a diff, which is why it exists separately
+	// from ForUser: tool output stays out of the chat while the change is visible.
+	FileChange *providers.FileChange `json:"file_change,omitempty"`
+
 	// ArtifactTags exposes local artifact paths back to the LLM in a structured
 	// form, e.g. "[file:/tmp/example.png]". This is used when a tool produced a
 	// reusable local artifact but did not deliver it to the user yet.

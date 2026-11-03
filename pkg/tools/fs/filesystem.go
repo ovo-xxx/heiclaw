@@ -980,11 +980,16 @@ func (t *WriteFileTool) Execute(ctx context.Context, args map[string]any) *ToolR
 		}
 	}
 
+	before, _ := t.fs.ReadFile(path)
+
 	if err := t.fs.WriteFile(path, []byte(content)); err != nil {
 		return ErrorResult(err.Error())
 	}
 
-	return SilentResult(fmt.Sprintf("File written: %s", path))
+	after, _ := t.fs.ReadFile(path)
+	result := SilentResult(fmt.Sprintf("File written: %s", path))
+	result.FileChange = FileChangeFromContents(path, before, after)
+	return result
 }
 
 type ListDirTool struct {
