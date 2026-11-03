@@ -13,7 +13,8 @@
     "show_more_channels": "更多",
     "show_less_channels": "收起",
     "config": "配置",
-    "logs": "日志"
+    "logs": "日志",
+    "terminal": "终端"
   },
   "launcherLogin": {
     "title": "登录",
@@ -963,6 +964,12 @@
       "factory_reset_confirm": "确认重置",
       "factory_reset_success": "配置已重置为出厂默认值。",
       "factory_reset_error": "重置配置失败。"
+    },
+    "terminal": {
+      "newSession": "新会话",
+      "statusConnected": "已连接",
+      "statusConnecting": "连接中",
+      "statusClosed": "已断开"
     },
     "logs": {
       "log_level_error": "更新日志等级失败。",

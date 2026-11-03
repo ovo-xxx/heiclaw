@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/sipeed/picoclaw/web/backend/launcherconfig"
 )
@@ -30,6 +31,9 @@ type Handler struct {
 	weixinFlows map[string]*weixinFlow
 	wecomMu     sync.Mutex
 	wecomFlows  map[string]*wecomFlow
+
+	// Live browser terminal sessions, capped by terminalMaxSessions.
+	terminalActive atomic.Int32
 }
 
 // NewHandler creates an instance of the API handler.
@@ -87,6 +91,9 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 
 	// Session history
 	h.registerSessionRoutes(mux)
+
+	// Browser terminal
+	h.registerTerminalRoutes(mux)
 
 	// OAuth login and credential management
 	h.registerOAuthRoutes(mux)

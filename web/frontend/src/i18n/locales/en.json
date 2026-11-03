@@ -13,7 +13,8 @@
     "show_more_channels": "More",
     "show_less_channels": "Less",
     "config": "Config",
-    "logs": "Logs"
+    "logs": "Logs",
+    "terminal": "Terminal"
   },
   "launcherLogin": {
     "title": "Sign in",
@@ -963,6 +964,12 @@
       "factory_reset_confirm": "Reset to Defaults",
       "factory_reset_success": "Configuration has been reset to factory defaults.",
       "factory_reset_error": "Failed to reset configuration."
+    },
+    "terminal": {
+      "newSession": "New session",
+      "statusConnected": "Connected",
+      "statusConnecting": "Connecting",
+      "statusClosed": "Disconnected"
     },
     "logs": {
       "log_level_error": "Failed to update log level.",

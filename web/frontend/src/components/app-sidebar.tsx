@@ -9,6 +9,7 @@ import {
   IconSearch,
   IconSettings,
   IconSparkles,
+  IconTerminal2,
   IconTools,
 } from "@tabler/icons-react"
 import { Link, useRouterState } from "@tanstack/react-router"
@@ -165,6 +166,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             title: "navigation.logs",
             url: "/logs",
             icon: IconListDetails,
+            translateTitle: true,
+          },
+          {
+            title: "navigation.terminal",
+            url: "/terminal",
+            icon: IconTerminal2,
             translateTitle: true,
           },
         ],
