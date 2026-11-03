@@ -46,6 +46,8 @@ func randomURLToken(n int) (string, error) {
 // LauncherDashboardAuthConfig holds runtime material for dashboard access checks.
 type LauncherDashboardAuthConfig struct {
 	ExpectedCookie string
+	// TrustedProxy delegates authentication to a trusted local reverse proxy.
+	TrustedProxy TrustedProxyAuthConfig
 	// LocalAutoLogin enables one-shot startup auto-login.
 	LocalAutoLogin *LauncherDashboardLocalAutoLogin
 	// SecureCookie sets the session cookie's Secure flag. If nil, DefaultLauncherDashboardSecureCookie is used.
@@ -139,6 +141,10 @@ func LauncherDashboardAuth(cfg LauncherDashboardAuthConfig, next http.Handler) h
 			return
 		}
 		if isPublicLauncherDashboardPath(r.Method, p) {
+			next.ServeHTTP(w, r)
+			return
+		}
+		if _, ok := cfg.TrustedProxy.Identity(r); ok {
 			next.ServeHTTP(w, r)
 			return
 		}

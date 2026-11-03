@@ -231,6 +231,10 @@ func (h *launcherAuthHandlers) handleStatus(w http.ResponseWriter, r *http.Reque
 		writeErrorf(w, "%v", initErr)
 		return
 	}
+	if _, ok := middleware.TrustedProxyAuthFromEnv().Identity(r); ok {
+		authed = true
+		initialized = true
+	}
 	resp := launcherAuthStatusResponse{
 		Authenticated: authed,
 		Initialized:   initialized,
