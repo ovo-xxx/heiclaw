@@ -47,6 +47,7 @@ func (p *Pipeline) Finalize(
 			Content:          finalContent,
 			ModelName:        exec.llmModelName,
 			ReasoningContent: responseReasoningContent(exec.response),
+			Usage:            ts.GetTurnUsage(),
 		}
 		ts.agent.Sessions.AddFullMessage(ts.sessionKey, finalMsg)
 		ts.recordPersistedMessage(finalMsg)

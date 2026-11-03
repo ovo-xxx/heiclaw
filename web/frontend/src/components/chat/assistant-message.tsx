@@ -20,6 +20,7 @@ import {
   MarkdownCodeBlock,
 } from "@/components/chat/message-code-block"
 import { Button } from "@/components/ui/button"
+import { formatDuration } from "@/features/chat/turn-stats"
 import { formatMessageTime } from "@/hooks/use-pico-chat"
 import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard"
 import { cn } from "@/lib/utils"
@@ -27,6 +28,7 @@ import {
   type AssistantMessageKind,
   type ChatAttachment,
   type ChatToolCall,
+  type TurnUsage,
 } from "@/store/chat"
 
 interface AssistantMessageProps {
@@ -36,6 +38,8 @@ interface AssistantMessageProps {
   modelName?: string
   toolCalls?: ChatToolCall[]
   timestamp?: string | number
+  usage?: TurnUsage
+  elapsedMs?: number
 }
 
 export function AssistantMessage({
@@ -45,6 +49,8 @@ export function AssistantMessage({
   modelName,
   toolCalls = [],
   timestamp = "",
+  usage,
+  elapsedMs,
 }: AssistantMessageProps) {
   const { t } = useTranslation()
   const { copy, isCopied } = useCopyToClipboard()
@@ -69,6 +75,21 @@ export function AssistantMessage({
     ? t("chat.copiedLabel")
     : t("chat.copyMessage")
   const trimmedModelName = modelName?.trim() ?? ""
+  const turnStatsParts: string[] = []
+  if (usage) {
+    turnStatsParts.push(
+      t("chat.turnTokens", {
+        input: usage.input_tokens.toLocaleString(),
+        output: usage.output_tokens.toLocaleString(),
+      }),
+    )
+  }
+  if (elapsedMs !== undefined) {
+    turnStatsParts.push(
+      t("chat.turnDuration", { duration: formatDuration(elapsedMs) }),
+    )
+  }
+  const turnStatsLabel = turnStatsParts.join(" · ")
 
   return (
     <div className="group flex w-full flex-col gap-1.5">
@@ -86,6 +107,12 @@ export function AssistantMessage({
               <>
                 <span className="opacity-50">•</span>
                 <span>{formattedTimestamp}</span>
+              </>
+            )}
+            {turnStatsLabel && (
+              <>
+                <span className="opacity-50">•</span>
+                <span>{turnStatsLabel}</span>
               </>
             )}
           </div>

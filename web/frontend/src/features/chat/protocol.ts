@@ -8,6 +8,7 @@ import { normalizeUnixTimestamp } from "@/features/chat/state"
 import {
   type ChatAttachment,
   type ContextUsage,
+  type TurnUsage,
   updateChatStore,
 } from "@/store/chat"
 
@@ -93,6 +94,30 @@ function parseModelName(payload: Record<string, unknown>): string | undefined {
   return modelName || undefined
 }
 
+function parseTurnUsage(
+  payload: Record<string, unknown>,
+): TurnUsage | undefined {
+  const raw = payload.usage
+  if (!raw || typeof raw !== "object") {
+    return undefined
+  }
+  const obj = raw as Record<string, unknown>
+  const input = Number(obj.input_tokens)
+  const output = Number(obj.output_tokens)
+  if (!Number.isFinite(input) || !Number.isFinite(output)) {
+    return undefined
+  }
+  if (input <= 0 && output <= 0) {
+    return undefined
+  }
+  const total = Number(obj.total_tokens)
+  return {
+    input_tokens: input,
+    output_tokens: output,
+    total_tokens: Number.isFinite(total) && total > 0 ? total : input + output,
+  }
+}
+
 export function handlePicoMessage(
   message: PicoMessage,
   expectedSessionId: string,
@@ -113,6 +138,7 @@ export function handlePicoMessage(
       const contextUsage = parseContextUsage(payload)
       const isPlaceholder = payload.placeholder === true
       const modelName = parseModelName(payload)
+      const turnUsage = parseTurnUsage(payload)
       const timestamp =
         message.timestamp !== undefined &&
         Number.isFinite(Number(message.timestamp))
@@ -128,6 +154,7 @@ export function handlePicoMessage(
             content,
             kind,
             ...(modelName ? { modelName } : {}),
+            ...(turnUsage ? { usage: turnUsage } : {}),
             ...(toolCalls ? { toolCalls } : {}),
             attachments,
             timestamp,
@@ -148,6 +175,7 @@ export function handlePicoMessage(
       const attachments = parseAttachments(payload)
       const contextUsage = parseContextUsage(payload)
       const modelName = parseModelName(payload)
+      const turnUsage = parseTurnUsage(payload)
       const timestamp =
         message.timestamp !== undefined &&
         Number.isFinite(Number(message.timestamp))
@@ -175,6 +203,9 @@ export function handlePicoMessage(
               toolCalls,
               ...(modelName ? { modelName } : {}),
               ...(attachments ? { attachments } : {}),
+              ...(turnUsage
+                ? { usage: turnUsage, timestamp: Date.now() }
+                : {}),
             }
           })
           if (found) {
@@ -194,6 +225,7 @@ export function handlePicoMessage(
               toolCalls,
               ...(modelName ? { modelName } : {}),
               ...(attachments ? { attachments } : {}),
+              ...(turnUsage ? { usage: turnUsage } : {}),
               timestamp,
             },
           ]

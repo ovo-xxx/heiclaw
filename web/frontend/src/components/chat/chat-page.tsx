@@ -35,6 +35,7 @@ import {
   getTransferredFiles,
   hasFileTransfer,
 } from "@/features/chat/image-input"
+import { turnElapsedMs, turnStartMessage } from "@/features/chat/turn-stats"
 import { useChatModels } from "@/hooks/use-chat-models"
 import { useGateway } from "@/hooks/use-gateway"
 import { usePicoChat } from "@/hooks/use-pico-chat"
@@ -397,12 +398,20 @@ export function ChatPage() {
             />
           )}
 
-          {messages.map((msg) => {
+          {messages.map((msg, index) => {
             if (
               !shouldShowAssistantMessage(assistantDetailVisibility, msg.kind)
             ) {
               return null
             }
+
+            const elapsedMs =
+              msg.role === "assistant" && msg.usage
+                ? turnElapsedMs(
+                    turnStartMessage(messages, index)?.timestamp,
+                    msg.timestamp,
+                  )
+                : undefined
 
             return (
               <div key={msg.id} className="flex w-full">
@@ -414,6 +423,8 @@ export function ChatPage() {
                     modelName={msg.modelName}
                     toolCalls={msg.toolCalls}
                     timestamp={msg.timestamp}
+                    usage={msg.usage}
+                    elapsedMs={elapsedMs}
                   />
                 ) : (
                   <UserMessage

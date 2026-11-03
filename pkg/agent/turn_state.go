@@ -250,9 +250,9 @@ type turnState struct {
 	finishedChan    chan struct{}      // Closed when turn finishes
 
 	// Token budget tracking
-	tokenBudget      *atomic.Int64        // Shared token budget counter
-	lastFinishReason string               // Last LLM finish_reason
-	lastUsage        *providers.UsageInfo // Last LLM usage info
+	tokenBudget      *atomic.Int64       // Shared token budget counter
+	lastFinishReason string              // Last LLM finish_reason
+	turnUsage        providers.UsageInfo // Usage summed over every LLM call in this turn
 
 	// Back-reference to the owning AgentLoop (set for SubTurns only, used for hard abort cascade)
 	al *AgentLoop
@@ -879,18 +879,29 @@ func (ts *turnState) SetLastFinishReason(reason string) {
 	ts.lastFinishReason = reason
 }
 
-// GetLastUsage returns the last LLM usage info
-func (ts *turnState) GetLastUsage() *providers.UsageInfo {
+// GetTurnUsage returns token usage summed over every LLM call in this turn, or
+// nil when nothing was recorded. A turn with tool loops makes several calls, so
+// per-call usage understates what the turn actually cost.
+func (ts *turnState) GetTurnUsage() *providers.UsageInfo {
 	ts.mu.RLock()
 	defer ts.mu.RUnlock()
-	return ts.lastUsage
+	if ts.turnUsage.PromptTokens == 0 && ts.turnUsage.CompletionTokens == 0 {
+		return nil
+	}
+	usage := ts.turnUsage
+	return &usage
 }
 
-// SetLastUsage sets the last LLM usage info
-func (ts *turnState) SetLastUsage(usage *providers.UsageInfo) {
+// RecordUsage folds one LLM call's usage into the turn total.
+func (ts *turnState) RecordUsage(usage *providers.UsageInfo) {
+	if usage == nil {
+		return
+	}
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
-	ts.lastUsage = usage
+	ts.turnUsage.PromptTokens += usage.PromptTokens
+	ts.turnUsage.CompletionTokens += usage.CompletionTokens
+	ts.turnUsage.TotalTokens += usage.TotalTokens
 }
 
 // =============================================================================

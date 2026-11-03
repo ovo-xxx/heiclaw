@@ -97,6 +97,11 @@ type Message struct {
 	ToolCalls        []ToolCall     `json:"tool_calls,omitempty"`
 	ToolCallID       string         `json:"tool_call_id,omitempty"`
 
+	// Usage is recorded on assistant turns for display only. Wire formats
+	// (pkg/providers/common.openaiMessage) build their own message objects, so
+	// this never reaches a provider endpoint.
+	Usage *UsageInfo `json:"usage,omitempty"`
+
 	// Prompt metadata is internal to the agent runtime. It records where a
 	// message or system part came from without changing provider/session JSON.
 	PromptLayer  string `json:"-"`

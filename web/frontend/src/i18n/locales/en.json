@@ -61,6 +61,8 @@
     },
     "reasoningLabel": "Reasoning",
     "toolCallsLabel": "Tool calls",
+    "turnTokens": "{{input}} in · {{output}} out",
+    "turnDuration": "took {{duration}}",
     "toolCallExplanationLabel": "Call note",
     "toolCallFunctionLabel": "Call summary",
     "toolCallArgumentsLabel": "Arguments",

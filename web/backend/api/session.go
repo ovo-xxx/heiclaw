@@ -51,10 +51,30 @@ type sessionChatMessage struct {
 	Content     string                  `json:"content"`
 	Kind        string                  `json:"kind,omitempty"`
 	ModelName   string                  `json:"model_name,omitempty"`
+	Usage       *sessionTurnUsage       `json:"usage,omitempty"`
 	CreatedAt   *time.Time              `json:"created_at,omitempty"`
 	Media       []string                `json:"media,omitempty"`
 	Attachments []sessionChatAttachment `json:"attachments,omitempty"`
 	ToolCalls   []utils.VisibleToolCall `json:"tool_calls,omitempty"`
+}
+
+// sessionTurnUsage mirrors the pico WebSocket "usage" payload shape, so the panel
+// reads one contract whether the turn just streamed or came from history.
+type sessionTurnUsage struct {
+	InputTokens  int `json:"input_tokens"`
+	OutputTokens int `json:"output_tokens"`
+	TotalTokens  int `json:"total_tokens"`
+}
+
+func turnUsageFromMessageUsage(usage *providers.UsageInfo) *sessionTurnUsage {
+	if usage == nil || (usage.PromptTokens <= 0 && usage.CompletionTokens <= 0) {
+		return nil
+	}
+	return &sessionTurnUsage{
+		InputTokens:  usage.PromptTokens,
+		OutputTokens: usage.CompletionTokens,
+		TotalTokens:  usage.TotalTokens,
+	}
 }
 
 type sessionChatAttachment struct {
@@ -563,6 +583,7 @@ func sessionTranscriptMessages(
 				Role:        "assistant",
 				Content:     content,
 				ModelName:   msg.ModelName,
+				Usage:       turnUsageFromMessageUsage(msg.Usage),
 				CreatedAt:   msg.CreatedAt,
 				Media:       append([]string(nil), msg.Media...),
 				Attachments: attachments,

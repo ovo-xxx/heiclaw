@@ -45,8 +45,15 @@ export interface ChatMessage {
   timestamp: number | string
   kind?: AssistantMessageKind
   modelName?: string
+  usage?: TurnUsage
   attachments?: ChatAttachment[]
   toolCalls?: ChatToolCall[]
+}
+
+export interface TurnUsage {
+  input_tokens: number
+  output_tokens: number
+  total_tokens: number
 }
 
 export interface ContextUsage {

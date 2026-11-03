@@ -537,12 +537,10 @@ func (p *Pipeline) CallLLM(
 	// the raw ctx passed to CallLLM is not seeded with turnState (only turnCtx
 	// is), so turnStateFromContext(ctx) returns nil here and silently dropped
 	// both the finish reason and the per-turn token usage. ts is also exactly
-	// what the streaming publisher reads via GetLastUsage at finalize.
+	// what the streaming publisher reads via GetTurnUsage at finalize.
 	if ts != nil {
 		ts.SetLastFinishReason(exec.response.FinishReason)
-		if exec.response.Usage != nil {
-			ts.SetLastUsage(exec.response.Usage)
-		}
+		ts.RecordUsage(exec.response.Usage)
 	}
 
 	if exec.suppressReasoning {

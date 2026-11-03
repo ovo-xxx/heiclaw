@@ -17,6 +17,11 @@ export interface SessionDetail {
     created_at?: string
     kind?: "normal" | "thought" | "tool_calls"
     model_name?: string
+    usage?: {
+      input_tokens: number
+      output_tokens: number
+      total_tokens: number
+    }
     media?: string[]
     attachments?: {
       type?: "image" | "audio" | "video" | "file"
