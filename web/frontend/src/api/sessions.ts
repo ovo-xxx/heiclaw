@@ -5,8 +5,72 @@ export interface SessionSummary {
   title: string
   preview: string
   message_count: number
+  /** Model pinned to this conversation; empty/absent means it follows the agent. */
+  model?: string
   created: string
   updated: string
+}
+
+// The Go struct in pkg/providers/protocoltypes/types.go is the wire shape, so
+// these snake_case keys are one contract shared by the session REST message
+// object and the pico WebSocket "turn_stats" payload. Both chat paths normalize
+// through parseTurnStats, so the panel reads the same fields whether the turn
+// just streamed or came from history.
+export interface TurnTokens {
+  input_tokens: number
+  output_tokens: number
+  total_tokens: number
+  cache_read_tokens?: number
+  cache_creation_tokens?: number
+  reasoning_tokens?: number
+  cost_usd?: number
+}
+
+export interface TurnLLMCallStat {
+  index: number
+  iteration?: number
+  model?: string
+  provider?: string
+  finish_reason?: string
+  tokens: TurnTokens
+  latency_ms: number
+  time_to_first_token_ms?: number
+  stream_chunks?: number
+  streamed_fallback?: boolean
+  retry_attempt?: number
+  fallback_attempt?: number
+  tool_calls?: number
+  content_chars?: number
+}
+
+export interface TurnToolStat {
+  name: string
+  ok: boolean
+  duration_ms: number
+}
+
+export interface TurnContextUsage {
+  used_tokens: number
+  total_tokens: number
+  history_tokens?: number
+  compress_at_tokens: number
+  summarize_at_tokens?: number
+  used_percent: number
+}
+
+export interface TurnStats {
+  duration_ms?: number
+  time_to_first_token_ms?: number
+  finish_reason?: string
+  llm_call_count: number
+  tool_iterations: number
+  stream_chunks?: number
+  dropped_llm_call_count?: number
+  dropped_tool_count?: number
+  tokens: TurnTokens
+  llm_calls?: TurnLLMCallStat[]
+  tools?: TurnToolStat[]
+  context_usage?: TurnContextUsage
 }
 
 export interface SessionDetail {
@@ -22,6 +86,7 @@ export interface SessionDetail {
       output_tokens: number
       total_tokens: number
     }
+    turn_stats?: TurnStats
     file_changes?: {
       path: string
       diff?: string
@@ -48,6 +113,8 @@ export interface SessionDetail {
     }[]
   }[]
   summary: string
+  /** Model pinned to this conversation, as stored by the gateway. */
+  model?: string
   created: string
   updated: string
 }

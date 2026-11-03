@@ -63,6 +63,15 @@ export function useSessionHistory({
     [offset],
   )
 
+  const hasLoadedOnMountRef = useRef(false)
+  useEffect(() => {
+    if (hasLoadedOnMountRef.current) {
+      return
+    }
+    hasLoadedOnMountRef.current = true
+    void loadSessions(true)
+  }, [loadSessions])
+
   useEffect(() => {
     if (!observerRef.current || !hasMore || isLoadingMore || loadError) return
 

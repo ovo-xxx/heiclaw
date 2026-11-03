@@ -1,4 +1,4 @@
-import { IconPlus } from "@tabler/icons-react"
+import { IconTerminal2 } from "@tabler/icons-react"
 import { useAtom } from "jotai"
 import {
   type ChangeEvent,
@@ -16,11 +16,15 @@ import {
   type ChatInputDisabledReason,
 } from "@/components/chat/chat-composer"
 import { ChatEmptyState } from "@/components/chat/chat-empty-state"
-import { ModelSelector } from "@/components/chat/model-selector"
-import { SessionHistoryMenu } from "@/components/chat/session-history-menu"
+import {
+  FOLLOW_DEFAULT_MODEL,
+  ModelSelector,
+} from "@/components/chat/model-selector"
 import { TypingIndicator } from "@/components/chat/typing-indicator"
 import { UserMessage } from "@/components/chat/user-message"
 import { PageHeader } from "@/components/page-header"
+import { TerminalDock } from "@/components/terminal/terminal-dock"
+import { useTerminalPanelToggle } from "@/components/terminal/use-terminal-panel"
 import { Button } from "@/components/ui/button"
 import {
   Select,
@@ -39,12 +43,13 @@ import { turnElapsedMs, turnStartMessage } from "@/features/chat/turn-stats"
 import { useChatModels } from "@/hooks/use-chat-models"
 import { useGateway } from "@/hooks/use-gateway"
 import { usePicoChat } from "@/hooks/use-pico-chat"
-import { useSessionHistory } from "@/hooks/use-session-history"
+import { cn } from "@/lib/utils"
 import type { AssistantDetailVisibility } from "@/store/chat"
 import type { ConnectionState } from "@/store/chat"
 import type { ChatAttachment } from "@/store/chat"
 import {
   assistantDetailVisibilityAtom,
+  sessionModelPinAtom,
   shouldShowAssistantMessage,
 } from "@/store/chat"
 import type { GatewayState } from "@/store/gateway"
@@ -128,19 +133,13 @@ export function ChatPage() {
     { value: "all", label: t("chat.assistantDetailVisibility.all") },
   ]
 
-  const {
-    messages,
-    connectionState,
-    isTyping,
-    activeSessionId,
-    contextUsage,
-    sendMessage,
-    switchSession,
-    newChat,
-  } = usePicoChat()
+  const { messages, connectionState, isTyping, contextUsage, sendMessage } =
+    usePicoChat()
 
   const { state: gwState } = useGateway()
   const isGatewayRunning = gwState === "running"
+  const { open: terminalOpen, toggle: toggleTerminal } =
+    useTerminalPanelToggle()
 
   const {
     defaultModelName,
@@ -148,9 +147,8 @@ export function ChatPage() {
     apiKeyModels,
     oauthModels,
     localModels,
-    settingDefault,
-    handleSetDefault,
   } = useChatModels({ isConnected: isGatewayRunning })
+  const [sessionModelPin, setSessionModelPin] = useAtom(sessionModelPinAtom)
   const hasDefaultModel = Boolean(defaultModelName)
   const inputDisabledReason = resolveChatInputDisabledReason({
     hasDefaultModel,
@@ -158,19 +156,6 @@ export function ChatPage() {
     gatewayState: gwState,
   })
   const canInput = inputDisabledReason === null
-
-  const {
-    sessions,
-    hasMore,
-    loadError,
-    loadErrorMessage,
-    observerRef,
-    loadSessions,
-    handleDeleteSession,
-  } = useSessionHistory({
-    activeSessionId,
-    onDeletedActiveSession: newChat,
-  })
 
   const syncScrollState = (element: HTMLDivElement) => {
     const { clientHeight, scrollHeight, scrollTop } = element
@@ -320,12 +305,14 @@ export function ChatPage() {
         titleExtra={
           hasAvailableModels && (
             <ModelSelector
+              value={sessionModelPin ?? FOLLOW_DEFAULT_MODEL}
               defaultModelName={defaultModelName}
               apiKeyModels={apiKeyModels}
               oauthModels={oauthModels}
               localModels={localModels}
-              disabled={settingDefault}
-              onValueChange={handleSetDefault}
+              onValueChange={(next) =>
+                setSessionModelPin(next === FOLLOW_DEFAULT_MODEL ? null : next)
+              }
             />
           )
         }
@@ -360,36 +347,40 @@ export function ChatPage() {
         <Button
           variant="secondary"
           size="sm"
-          onClick={newChat}
-          className="h-9 gap-2"
+          onClick={toggleTerminal}
+          aria-pressed={terminalOpen}
+          aria-label={t(
+            terminalOpen
+              ? "pages.terminal.hidePanel"
+              : "pages.terminal.showPanel",
+          )}
+          title={t(
+            terminalOpen
+              ? "pages.terminal.hidePanel"
+              : "pages.terminal.showPanel",
+          )}
+          className={cn(
+            "h-9 gap-2",
+            terminalOpen && "bg-muted text-foreground",
+          )}
         >
-          <IconPlus className="size-4" />
-          <span className="hidden sm:inline">{t("chat.newChat")}</span>
+          <IconTerminal2 className="size-4" />
+          <span className="hidden sm:inline">
+            {t(
+              terminalOpen
+                ? "pages.terminal.hidePanel"
+                : "pages.terminal.showPanel",
+            )}
+          </span>
         </Button>
-
-        <SessionHistoryMenu
-          sessions={sessions}
-          activeSessionId={activeSessionId}
-          hasMore={hasMore}
-          loadError={loadError}
-          loadErrorMessage={loadErrorMessage}
-          observerRef={observerRef}
-          onOpenChange={(open) => {
-            if (open) {
-              void loadSessions(true)
-            }
-          }}
-          onSwitchSession={switchSession}
-          onDeleteSession={handleDeleteSession}
-        />
       </PageHeader>
 
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="min-h-0 flex-1 [scrollbar-gutter:stable] overflow-y-auto px-4 py-6 md:px-8 lg:px-24 xl:px-48"
+        className="min-h-0 flex-1 [scrollbar-gutter:stable] overflow-y-auto px-4 pt-3 pb-3 md:px-8 md:py-6 lg:px-24 xl:px-48"
       >
-        <div className="mx-auto flex w-full max-w-250 flex-col gap-8 pb-8">
+        <div className="mx-auto flex w-full max-w-250 flex-col gap-8 pb-2 md:pb-4">
           {messages.length === 0 && !isTyping && (
             <ChatEmptyState
               hasAvailableModels={hasAvailableModels}
@@ -406,7 +397,7 @@ export function ChatPage() {
             }
 
             const elapsedMs =
-              msg.role === "assistant" && msg.usage
+              msg.role === "assistant" && (msg.usage || msg.stats)
                 ? turnElapsedMs(
                     turnStartMessage(messages, index)?.timestamp,
                     msg.timestamp,
@@ -425,6 +416,7 @@ export function ChatPage() {
                     timestamp={msg.timestamp}
                     usage={msg.usage}
                     elapsedMs={elapsedMs}
+                    stats={msg.stats}
                     fileChanges={msg.fileChanges}
                   />
                 ) : (
@@ -472,7 +464,10 @@ export function ChatPage() {
         canSend={canSubmit}
         isDragActive={isDragActive}
         contextUsage={contextUsage}
+        flushBottom={terminalOpen}
       />
+
+      <TerminalDock />
     </div>
   )
 }

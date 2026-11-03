@@ -5,6 +5,7 @@ import {
   parseAssistantMessageUpdateState,
 } from "@/features/chat/assistant-message-state"
 import { normalizeUnixTimestamp } from "@/features/chat/state"
+import { parseTurnStats } from "@/features/chat/turn-stats"
 import {
   type ChatAttachment,
   type ContextUsage,
@@ -169,6 +170,7 @@ export function handlePicoMessage(
       const isPlaceholder = payload.placeholder === true
       const modelName = parseModelName(payload)
       const turnUsage = parseTurnUsage(payload)
+      const stats = parseTurnStats(payload.turn_stats)
       const fileChanges = parseFileChanges(payload)
       const timestamp =
         message.timestamp !== undefined &&
@@ -186,6 +188,7 @@ export function handlePicoMessage(
             kind,
             ...(modelName ? { modelName } : {}),
             ...(turnUsage ? { usage: turnUsage } : {}),
+            ...(stats ? { stats } : {}),
             ...(fileChanges ? { fileChanges } : {}),
             ...(toolCalls ? { toolCalls } : {}),
             attachments,
@@ -208,6 +211,7 @@ export function handlePicoMessage(
       const contextUsage = parseContextUsage(payload)
       const modelName = parseModelName(payload)
       const turnUsage = parseTurnUsage(payload)
+      const stats = parseTurnStats(payload.turn_stats)
       const fileChanges = parseFileChanges(payload)
       const timestamp =
         message.timestamp !== undefined &&
@@ -239,6 +243,7 @@ export function handlePicoMessage(
               ...(turnUsage
                 ? { usage: turnUsage, timestamp: Date.now() }
                 : {}),
+              ...(stats ? { stats } : {}),
               ...(fileChanges ? { fileChanges } : {}),
             }
           })
@@ -260,6 +265,7 @@ export function handlePicoMessage(
               ...(modelName ? { modelName } : {}),
               ...(attachments ? { attachments } : {}),
               ...(turnUsage ? { usage: turnUsage } : {}),
+              ...(stats ? { stats } : {}),
               ...(fileChanges ? { fileChanges } : {}),
               timestamp,
             },

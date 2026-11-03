@@ -42,6 +42,8 @@ interface ChatComposerProps {
   canSend: boolean
   isDragActive: boolean
   contextUsage?: ContextUsage
+  /** Terminal dock (or any panel) sits directly below: drop the bottom gap. */
+  flushBottom?: boolean
 }
 
 export function ChatComposer({
@@ -61,6 +63,7 @@ export function ChatComposer({
   canSend,
   isDragActive,
   contextUsage,
+  flushBottom,
 }: ChatComposerProps) {
   const { t } = useTranslation()
   const canInput = inputDisabledReason === null
@@ -91,8 +94,15 @@ export function ChatComposer({
   }
 
   return (
-    <div className="before:bg-background pointer-events-none relative z-10 -mt-[24px] shrink-0 [scrollbar-gutter:stable] overflow-y-auto px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] before:pointer-events-none before:absolute before:inset-x-0 before:top-[24px] before:bottom-0 before:content-[''] md:px-8 md:pb-8 lg:px-24 xl:px-48">
-      <div className="pointer-events-auto mx-auto flex max-w-[1000px] flex-col items-end">
+    <div
+      className={cn(
+        "before:bg-background pointer-events-none relative z-10 -mt-4 shrink-0 [scrollbar-gutter:stable] overflow-y-auto px-4 before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:bottom-0 before:content-[''] md:px-8 lg:px-24 xl:px-48",
+        flushBottom
+          ? "pb-1"
+          : "pb-[calc(0.5rem+env(safe-area-inset-bottom))] max-sm:pb-1 md:pb-4",
+      )}
+    >
+      <div className="pointer-events-auto relative mx-auto flex max-w-[1000px] flex-col items-end">
         <div
           className={cn(
             "bg-card border-border/60 relative flex w-full flex-col rounded-2xl border p-3 shadow-sm transition-colors",
@@ -200,17 +210,19 @@ export function ChatComposer({
           </div>
         </div>
 
-        <div
-          aria-hidden={!hasInput}
-          className={cn(
-            "border-border/50 bg-muted/55 text-muted-foreground mt-2 inline-flex items-center rounded-md border px-3 py-1 text-[11px] shadow-sm transition-all duration-200 dark:bg-muted/45",
-            hasInput
-              ? "translate-y-0 opacity-100"
-              : "pointer-events-none -translate-y-1 opacity-0",
-          )}
-        >
-          {t("chat.composeHint")}
-        </div>
+        {!flushBottom && (
+          <div
+            aria-hidden={!hasInput}
+            className={cn(
+              "border-border/50 bg-muted/55 text-muted-foreground dark:bg-muted/45 mt-2 inline-flex items-center rounded-md border px-3 py-1 text-[11px] shadow-sm transition-all duration-200",
+              hasInput
+                ? "translate-y-0 opacity-100"
+                : "pointer-events-none -translate-y-1 opacity-0",
+            )}
+          >
+            {t("chat.composeHint")}
+          </div>
+        )}
       </div>
     </div>
   )

@@ -4,6 +4,7 @@ import {
   parseToolCallsValue,
   toolCallsSignature,
 } from "@/features/chat/tool-calls"
+import { parseTurnStats } from "@/features/chat/turn-stats"
 import type { ChatAttachment, ChatMessage } from "@/store/chat"
 
 function toChatAttachments({
@@ -41,16 +42,21 @@ function toChatAttachments({
 
 export async function loadSessionMessages(
   sessionId: string,
-): Promise<ChatMessage[]> {
+): Promise<{ messages: ChatMessage[]; model: string | null }> {
   const detail = await getSessionHistory(sessionId)
-  return detail.messages.map((message, index) => ({
+  const messages = detail.messages.map((message, index) => ({
     id: `hist-${index}-${Date.now()}`,
     role: message.role,
     content: message.content,
     kind: message.role === "assistant" ? (message.kind ?? "normal") : undefined,
     modelName: message.model_name,
     usage: message.role === "assistant" ? message.usage : undefined,
-    fileChanges: message.role === "assistant" ? message.file_changes : undefined,
+    stats:
+      message.role === "assistant"
+        ? parseTurnStats(message.turn_stats)
+        : undefined,
+    fileChanges:
+      message.role === "assistant" ? message.file_changes : undefined,
     toolCalls:
       message.role === "assistant"
         ? parseToolCallsValue(message.tool_calls)
@@ -61,6 +67,7 @@ export async function loadSessionMessages(
     }),
     timestamp: message.created_at ?? detail.updated,
   }))
+  return { messages, model: detail.model?.trim() || null }
 }
 
 function normalizeMessageTimestamp(timestamp: number | string): string {

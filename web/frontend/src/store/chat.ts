@@ -1,6 +1,7 @@
 import { atom, getDefaultStore } from "jotai"
 import { atomWithStorage } from "jotai/utils"
 
+import type { TurnContextUsage, TurnStats } from "@/api/sessions"
 import {
   ASSISTANT_DETAIL_VISIBILITY_STORAGE_KEY,
   type AssistantDetailVisibility,
@@ -46,6 +47,7 @@ export interface ChatMessage {
   kind?: AssistantMessageKind
   modelName?: string
   usage?: TurnUsage
+  stats?: TurnStats
   fileChanges?: TurnFileChange[]
   attachments?: ChatAttachment[]
   toolCalls?: ChatToolCall[]
@@ -64,14 +66,9 @@ export interface TurnFileChange {
   deletions: number
 }
 
-export interface ContextUsage {
-  used_tokens: number
-  total_tokens: number
-  history_tokens?: number
-  compress_at_tokens: number
-  summarize_at_tokens?: number
-  used_percent: number
-}
+// The live "context_usage" WebSocket payload and the snapshot inside
+// turn_stats carry the same names, so one type serves both.
+export type ContextUsage = TurnContextUsage
 
 export type ConnectionState =
   | "disconnected"
@@ -86,6 +83,12 @@ export interface ChatStoreState {
   activeSessionId: string
   hasHydratedActiveSession: boolean
   contextUsage?: ContextUsage
+  /**
+   * Model pinned to the active conversation, or null to follow the agent's
+   * default. The gateway stores the pin with the session; this mirrors it so the
+   * selector reflects a choice before the next turn confirms it.
+   */
+  sessionModelPin: string | null
 }
 
 type ChatStorePatch = Partial<ChatStoreState>
@@ -96,9 +99,20 @@ const DEFAULT_CHAT_STATE: ChatStoreState = {
   isTyping: false,
   activeSessionId: getInitialActiveSessionId(),
   hasHydratedActiveSession: false,
+  sessionModelPin: null,
 }
 
 export const chatAtom = atom<ChatStoreState>(DEFAULT_CHAT_STATE)
+// Derived so sidebar consumers only re-render on session changes, not on every
+// streamed message token.
+export const activeSessionIdAtom = atom((get) => get(chatAtom).activeSessionId)
+export const sessionModelPinAtom = atom(
+  (get) => get(chatAtom).sessionModelPin,
+  (_get, _set, value: string | null) => {
+    updateChatStore({ sessionModelPin: value })
+  },
+)
+export const isTypingAtom = atom((get) => get(chatAtom).isTyping)
 export const assistantDetailVisibilityAtom =
   atomWithStorage<AssistantDetailVisibility>(
     ASSISTANT_DETAIL_VISIBILITY_STORAGE_KEY,

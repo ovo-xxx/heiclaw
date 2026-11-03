@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { useTranslation } from "react-i18next"
-import { toast } from "sonner"
 
-import { type ModelInfo, getModels, setDefaultModel } from "@/api/models"
-import { showSaveSuccessOrRestartToast } from "@/lib/restart-required"
-import { refreshGatewayState } from "@/store/gateway"
+import { type ModelInfo, getModels } from "@/api/models"
 
 interface UseChatModelsOptions {
   isConnected: boolean
@@ -21,32 +17,27 @@ function isLocalModel(model: ModelInfo): boolean {
   )
 }
 
+/**
+ * The model catalogue the chat picker offers, plus the agent's default. Changing
+ * the default belongs to the models admin page; the chat page pins a model to one
+ * conversation instead, so this hook no longer writes global config.
+ */
 export function useChatModels({ isConnected }: UseChatModelsOptions) {
-  const { t } = useTranslation()
   const [modelList, setModelList] = useState<ModelInfo[]>([])
   const [defaultModelName, setDefaultModelName] = useState("")
-  const [settingDefault, setSettingDefault] = useState(false)
-  const setDefaultRequestIdRef = useRef(0)
   const loadModelsRequestIdRef = useRef(0)
-  const setDefaultQueueRef = useRef<Promise<void>>(Promise.resolve())
-
-  const syncDefaultModelName = useCallback((defaultModel: string) => {
-    setDefaultModelName(defaultModel.trim())
-  }, [])
 
   const loadModels = useCallback(async () => {
     try {
       const requestId = ++loadModelsRequestIdRef.current
-      await setDefaultQueueRef.current.catch(() => {})
-      if (requestId !== loadModelsRequestIdRef.current) return
       const data = await getModels()
       if (requestId !== loadModelsRequestIdRef.current) return
       setModelList(data.models)
-      syncDefaultModelName(data.default_model)
+      setDefaultModelName(data.default_model.trim())
     } catch {
       // silently fail
     }
-  }, [syncDefaultModelName])
+  }, [])
 
   useEffect(() => {
     const timerId = setTimeout(() => {
@@ -55,49 +46,6 @@ export function useChatModels({ isConnected }: UseChatModelsOptions) {
 
     return () => clearTimeout(timerId)
   }, [isConnected, loadModels])
-
-  const handleSetDefault = useCallback(
-    async (modelName: string) => {
-      if (modelName === defaultModelName) return
-      const requestId = ++setDefaultRequestIdRef.current
-      ++loadModelsRequestIdRef.current
-      setSettingDefault(true)
-
-      const request = setDefaultQueueRef.current
-        .catch(() => {})
-        .then(async () => {
-          if (requestId !== setDefaultRequestIdRef.current) return
-          await setDefaultModel(modelName)
-          if (requestId !== setDefaultRequestIdRef.current) return
-          const data = await getModels()
-          if (requestId !== setDefaultRequestIdRef.current) return
-
-          setModelList(data.models)
-          syncDefaultModelName(data.default_model)
-          const gateway = await refreshGatewayState({ force: true })
-          if (requestId !== setDefaultRequestIdRef.current) return
-          showSaveSuccessOrRestartToast(
-            t,
-            t("models.defaultChangeSuccess"),
-            modelName,
-            gateway?.restartRequired === true,
-          )
-        })
-      setDefaultQueueRef.current = request
-      try {
-        await request
-      } catch (err) {
-        if (requestId !== setDefaultRequestIdRef.current) return
-        console.error("Failed to set default model:", err)
-        toast.error(err instanceof Error ? err.message : t("models.loadError"))
-      } finally {
-        if (requestId === setDefaultRequestIdRef.current) {
-          setSettingDefault(false)
-        }
-      }
-    },
-    [defaultModelName, syncDefaultModelName, t],
-  )
 
   const defaultSelectableModels = useMemo(() => {
     const modelsByAlias = new Map<string, ModelInfo[]>()
@@ -150,7 +98,5 @@ export function useChatModels({ isConnected }: UseChatModelsOptions) {
     apiKeyModels,
     oauthModels,
     localModels,
-    settingDefault,
-    handleSetDefault,
   }
 }

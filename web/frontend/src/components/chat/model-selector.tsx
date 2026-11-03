@@ -12,7 +12,13 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
+/** Select item meaning "no per-conversation pin; use the agent's default". */
+export const FOLLOW_DEFAULT_MODEL = "__follow_default__"
+
 interface ModelSelectorProps {
+  /** Selected item: a model name, or FOLLOW_DEFAULT_MODEL. */
+  value: string
+  /** Shown when nothing is pinned, so the user sees what "默认" resolves to. */
   defaultModelName: string
   apiKeyModels: ModelInfo[]
   oauthModels: ModelInfo[]
@@ -22,6 +28,7 @@ interface ModelSelectorProps {
 }
 
 export function ModelSelector({
+  value,
   defaultModelName,
   apiKeyModels,
   oauthModels,
@@ -31,19 +38,16 @@ export function ModelSelector({
 }: ModelSelectorProps) {
   const { t } = useTranslation()
   const rawDefaultModel =
-    defaultModelName &&
+    value &&
+    value !== FOLLOW_DEFAULT_MODEL &&
     ![...apiKeyModels, ...oauthModels, ...localModels].some(
-      (model) => model.model_name === defaultModelName,
+      (model) => model.model_name === value,
     )
-      ? defaultModelName
+      ? value
       : ""
 
   return (
-    <Select
-      value={defaultModelName}
-      onValueChange={onValueChange}
-      disabled={disabled}
-    >
+    <Select value={value} onValueChange={onValueChange} disabled={disabled}>
       <SelectTrigger
         size="sm"
         className="text-muted-foreground hover:text-foreground focus-visible:border-input h-8 max-w-[160px] min-w-[80px] bg-transparent shadow-none focus-visible:ring-0 sm:max-w-[220px]"
@@ -51,6 +55,13 @@ export function ModelSelector({
         <SelectValue placeholder={t("chat.noModel")} />
       </SelectTrigger>
       <SelectContent position="popper" align="start">
+        <SelectItem value={FOLLOW_DEFAULT_MODEL}>
+          {t("chat.modelFollowDefault", { model: defaultModelName })}
+        </SelectItem>
+        {(apiKeyModels.length > 0 ||
+          oauthModels.length > 0 ||
+          localModels.length > 0 ||
+          rawDefaultModel) && <SelectSeparator />}
         {rawDefaultModel && (
           <SelectItem value={rawDefaultModel}>{rawDefaultModel}</SelectItem>
         )}

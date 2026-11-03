@@ -265,7 +265,7 @@ export async function hydrateActiveSession() {
   }
 
   hydratePromise = loadSessionMessages(storedSessionId)
-    .then((historyMessages) => {
+    .then(({ messages: historyMessages, model }) => {
       const currentState = getChatState()
       if (currentState.activeSessionId !== storedSessionId) {
         return
@@ -278,6 +278,7 @@ export async function hydrateActiveSession() {
             currentState.messages,
           ),
           hasHydratedActiveSession: true,
+          sessionModelPin: model,
         })
         return
       }
@@ -286,6 +287,7 @@ export async function hydrateActiveSession() {
         messages: historyMessages,
         isTyping: false,
         hasHydratedActiveSession: true,
+        sessionModelPin: model,
       })
     })
     .catch((error) => {
@@ -360,6 +362,10 @@ export function sendChatMessage({
     const payload: Record<string, unknown> = {
       content: normalizedContent,
       media: normalizedAttachments.map((attachment) => attachment.url),
+      // Always stated so the session's pin is authoritative: the name when the
+      // conversation pins one, empty to follow the agent's default and clear any
+      // stale pin the gateway still holds.
+      model_name: getChatState().sessionModelPin ?? "",
     }
 
     socket.send(
@@ -386,7 +392,8 @@ export async function switchChatSession(sessionId: string) {
   }
 
   try {
-    const historyMessages = await loadSessionMessages(sessionId)
+    const { messages: historyMessages, model } =
+      await loadSessionMessages(sessionId)
 
     disconnectChatInternal({ clearDesiredConnection: false })
     setActiveSessionId(sessionId)
@@ -395,6 +402,7 @@ export async function switchChatSession(sessionId: string) {
       isTyping: false,
       hasHydratedActiveSession: true,
       contextUsage: undefined,
+      sessionModelPin: model,
     })
 
     if (store.get(gatewayAtom).status === "running") {
@@ -419,6 +427,7 @@ export async function newChatSession() {
     isTyping: false,
     hasHydratedActiveSession: true,
     contextUsage: undefined,
+    sessionModelPin: null,
   })
 
   if (store.get(gatewayAtom).status === "running") {
