@@ -69,7 +69,6 @@ export function AppHeader() {
     (gwState === "stopped" || gwState === "error")
 
   const [showStopDialog, setShowStopDialog] = React.useState(false)
-  const [showLogoutDialog, setShowLogoutDialog] = React.useState(false)
 
   const handleLogout = async () => {
     const result = await postLauncherDashboardLogout()
@@ -146,22 +145,6 @@ export function AppHeader() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("header.logout.tooltip")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("header.logout.description")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void handleLogout()}>
-              {t("header.logout.confirm")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       <div className="text-muted-foreground flex items-center gap-1 text-sm font-medium md:gap-2">
         {restartRequired && (
@@ -328,7 +311,7 @@ export function AppHeader() {
               variant="ghost"
               size="icon"
               className="size-8"
-              onClick={() => setShowLogoutDialog(true)}
+              onClick={() => void handleLogout()}
               aria-label={t("header.logout.tooltip")}
             >
               <IconLogout className="size-4.5" />
