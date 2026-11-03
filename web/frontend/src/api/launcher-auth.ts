@@ -41,14 +41,22 @@ export async function getLauncherAuthStatus(): Promise<LauncherAuthStatus> {
   return (await res.json()) as LauncherAuthStatus
 }
 
-export async function postLauncherDashboardLogout(): Promise<boolean> {
+export type LauncherLogoutResult = { ok: boolean; logoutUrl?: string }
+
+export async function postLauncherDashboardLogout(): Promise<LauncherLogoutResult> {
   const res = await fetch("/api/auth/logout", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin",
     body: "{}",
   })
-  return res.ok
+  if (!res.ok) return { ok: false }
+  try {
+    const body = (await res.json()) as { logout_url?: string }
+    return { ok: true, logoutUrl: body.logout_url }
+  } catch {
+    return { ok: true }
+  }
 }
 
 export type SetupResult = { ok: true } | { ok: false; error: string }

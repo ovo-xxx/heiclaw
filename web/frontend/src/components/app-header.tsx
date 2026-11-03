@@ -72,8 +72,10 @@ export function AppHeader() {
   const [showLogoutDialog, setShowLogoutDialog] = React.useState(false)
 
   const handleLogout = async () => {
-    await postLauncherDashboardLogout()
-    globalThis.location.assign("/launcher-login")
+    const result = await postLauncherDashboardLogout()
+    // When a forward-auth gate is in front (PICOCLAW_LOGOUT_URL), hand off to it
+    // so the gate session ends too; otherwise fall back to the local login page.
+    globalThis.location.assign(result.logoutUrl || "/launcher-login")
   }
 
   const handleGatewayToggle = () => {

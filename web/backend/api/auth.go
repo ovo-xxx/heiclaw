@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 
 	"github.com/sipeed/picoclaw/web/backend/middleware"
@@ -215,6 +216,11 @@ func (h *launcherAuthHandlers) handleLogout(w http.ResponseWriter, r *http.Reque
 	}
 
 	middleware.ClearLauncherDashboardSessionCookie(w, r, h.secureCookie)
+	if logoutURL := strings.TrimSpace(os.Getenv("PICOCLAW_LOGOUT_URL")); logoutURL != "" {
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok", "logout_url": logoutURL})
+		return
+	}
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(`{"status":"ok"}`))
 }
