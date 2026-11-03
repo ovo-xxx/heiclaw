@@ -179,3 +179,29 @@
     transform: translateY(0);
   }
 }
+
+/* Terminal workspace: one shared header strip for the whole dock, not one per
+   split pane. The library renders a 44px [data-tabset-header] inside every
+   tabset; hiding it here is what keeps splits from multiplying the tab strip. */
+[data-workspace] [data-tabset] {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+[data-workspace] [data-tabset-header] {
+  display: none;
+}
+
+/* Without this chain the tabset measures its natural height (header + panels)
+   and overflows the panel, so the bottom of the shell gets clipped. */
+[data-workspace] [data-tab-panels] {
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+}
+
+[data-workspace] [data-tab-content] {
+  height: 100%;
+}

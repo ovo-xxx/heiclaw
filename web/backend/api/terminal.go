@@ -21,11 +21,38 @@ import (
 // user, so the shell runs with the launcher's privileges (root when the service
 // unit runs as root). This is a full server shell by explicit owner choice.
 const (
-	terminalMaxSessions = 4
-	terminalReadChunk   = 32 * 1024
-	terminalDefaultRows = 24
-	terminalDefaultCols = 80
+	terminalMaxSessionsEnv = "PICOCLAW_TERMINAL_MAX_SESSIONS"
+	terminalDefaultMax     = 8
+	// Hard ceiling, so a typo in the environment cannot let the panel fork an
+	// unbounded number of login shells.
+	terminalMaxSessionsLimit = 64
+	terminalReadChunk        = 32 * 1024
+	terminalDefaultRows      = 24
+	terminalDefaultCols      = 80
 )
+
+// terminalMaxSessions is the live cap on concurrent browser terminals. It is
+// counted per launcher process, so it is shared by every dashboard client and
+// every tab of every client; the web panel opens one PTY per terminal tab, and
+// a tab is cheap to open but a real login shell.
+// PICOCLAW_TERMINAL_MAX_SESSIONS overrides the default: 0 disables terminals,
+// anything above terminalMaxSessionsLimit is clamped, and anything unparsable
+// falls back to the default. Read per request so changing the environment only
+// needs a launcher restart, and so a test can set it.
+func terminalMaxSessions() int32 {
+	raw := strings.TrimSpace(os.Getenv(terminalMaxSessionsEnv))
+	if raw == "" {
+		return terminalDefaultMax
+	}
+	value, err := strconv.Atoi(raw)
+	if err != nil || value < 0 {
+		return terminalDefaultMax
+	}
+	if value > terminalMaxSessionsLimit {
+		return terminalMaxSessionsLimit
+	}
+	return int32(value)
+}
 
 // terminalSession is one PTY plus the shell attached to it.
 type terminalSession struct {
@@ -68,6 +95,30 @@ var terminalUpgrader = websocket.Upgrader{
 
 func (h *Handler) registerTerminalRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/terminal/ws", h.handleTerminalWS)
+	// The panel asks before opening a tab: a failed WebSocket handshake does
+	// not expose its HTTP status to the browser, so the "too many terminals"
+	// reason has to come from here.
+	mux.HandleFunc("GET /api/terminal/capacity", h.handleTerminalCapacity)
+}
+
+type terminalCapacity struct {
+	Active    int32 `json:"active"`
+	Max       int32 `json:"max"`
+	Available bool  `json:"available"`
+}
+
+func (h *Handler) handleTerminalCapacity(w http.ResponseWriter, _ *http.Request) {
+	active := h.terminalActive.Load()
+	max := terminalMaxSessions()
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	if err := json.NewEncoder(w).Encode(terminalCapacity{
+		Active:    active,
+		Max:       max,
+		Available: active < max,
+	}); err != nil {
+		logger.Errorf("Terminal capacity write failed: %v", err)
+	}
 }
 
 type terminalResize struct {
@@ -76,8 +127,29 @@ type terminalResize struct {
 	Cols uint16 `json:"cols"`
 }
 
+// reserveTerminalSlot claims one of the terminalMaxSessions() slots, or reports
+// that the pool is full. The counter is a Handler field declared in router.go;
+// the reservation lives here so every early return below releases exactly what
+// it took, and the compare-and-swap keeps two clients racing the cap from both
+// getting a shell.
+func (h *Handler) reserveTerminalSlot() bool {
+	for {
+		active := h.terminalActive.Load()
+		if active >= terminalMaxSessions() {
+			return false
+		}
+		if h.terminalActive.CompareAndSwap(active, active+1) {
+			return true
+		}
+	}
+}
+
+func (h *Handler) releaseTerminalSlot() {
+	h.terminalActive.Add(-1)
+}
+
 func (h *Handler) handleTerminalWS(w http.ResponseWriter, r *http.Request) {
-	if h.terminalActive.Load() >= terminalMaxSessions {
+	if !h.reserveTerminalSlot() {
 		http.Error(w, "terminal sessions exhausted", http.StatusServiceUnavailable)
 		return
 	}
@@ -93,6 +165,7 @@ func (h *Handler) handleTerminalWS(w http.ResponseWriter, r *http.Request) {
 	session, err := startTerminalShell(h.terminalWorkingDir(), uint16(rows), uint16(cols))
 	if err != nil {
 		logger.Errorf("Terminal start failed: %v", err)
+		h.releaseTerminalSlot()
 		http.Error(w, "terminal unavailable", http.StatusNotImplemented)
 		return
 	}
@@ -100,13 +173,13 @@ func (h *Handler) handleTerminalWS(w http.ResponseWriter, r *http.Request) {
 	conn, err := terminalUpgrader.Upgrade(w, r, nil)
 	if err != nil {
 		// Upgrade already wrote the HTTP error.
+		h.releaseTerminalSlot()
 		session.close()
 		return
 	}
 
-	h.terminalActive.Add(1)
 	defer func() {
-		h.terminalActive.Add(-1)
+		h.releaseTerminalSlot()
 		session.close()
 		conn.Close()
 	}()
