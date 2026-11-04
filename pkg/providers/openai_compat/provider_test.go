@@ -138,10 +138,13 @@ func TestBuildRequestBody_MapsDeepSeekThinkingLevels(t *testing.T) {
 		wantEffort       any
 	}{
 		{name: "off", level: "off", wantThinkingType: "disabled"},
-		{name: "low", level: "low", wantThinkingType: "enabled", wantEffort: "high"},
+		// DeepSeek's own model list declares supported_levels ["low","high","max"],
+		// so "low" is sent as "low" instead of being raised to the default effort.
+		{name: "low", level: "low", wantThinkingType: "enabled", wantEffort: "low"},
 		{name: "medium", level: "medium", wantThinkingType: "enabled", wantEffort: "high"},
 		{name: "high", level: "high", wantThinkingType: "enabled", wantEffort: "high"},
 		{name: "xhigh", level: "xhigh", wantThinkingType: "enabled", wantEffort: "max"},
+		{name: "max", level: "max", wantThinkingType: "enabled", wantEffort: "max"},
 		{name: "adaptive", level: "adaptive"},
 	}
 

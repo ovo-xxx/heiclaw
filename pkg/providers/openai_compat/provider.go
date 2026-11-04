@@ -272,7 +272,7 @@ func normalizedThinkingLevel(options map[string]any) (string, bool) {
 		return "", false
 	}
 	switch strings.ToLower(strings.TrimSpace(raw)) {
-	case "off", "low", "medium", "high", "xhigh", "adaptive":
+	case "off", "low", "medium", "high", "xhigh", "max", "adaptive":
 		return strings.ToLower(strings.TrimSpace(raw)), true
 	default:
 		return "", false
