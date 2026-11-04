@@ -69,7 +69,9 @@ export const servicesNavItems: NavSubItem[] = [
 // Which category a route belongs to. A path listed nowhere keeps the previous
 // category, which is what the top bar does while the user reads a detail page.
 const categoryPrefixes: Record<NavCategoryKey, string[]> = {
-  chat: ["/"],
+  // A conversation has its own address (/chat/<id>); without it the sidebar lost the
+  // conversation list the moment one was opened, because no category matched.
+  chat: ["/", "/chat/"],
   model: ["/models", "/credentials"],
   channels: ["/channels"],
   agent: ["/agent"],

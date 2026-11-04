@@ -342,6 +342,7 @@ export function TerminalWorkspace({
                   label={tabTitle(tab.id)}
                   status={info?.status}
                   selected={selected}
+                  focused={targetTabsetId === tabset.id}
                   paneNumber={paneCount > 1 ? paneIndex + 1 : null}
                   onSelect={() => {
                     setActivePaneId(tabset.id)
@@ -492,6 +493,10 @@ interface TerminalTabChipProps {
   label: string
   status?: TerminalTabStatus
   selected: boolean
+  // The pane this tab lives in holds the keyboard focus. With a single tab on screen
+  // every chip looks the same, so this is what answers "which terminal am I typing
+  // into" once the panel is split.
+  focused: boolean
   paneNumber: number | null
   onSelect: () => void
   onClose: () => void
@@ -502,6 +507,7 @@ function TerminalTabChip({
   label,
   status,
   selected,
+  focused,
   paneNumber,
   onSelect,
   onClose,
@@ -526,10 +532,13 @@ function TerminalTabChip({
       }}
       className={cn(
         "group flex h-6 max-w-[190px] min-w-0 shrink-0 items-center gap-1 rounded-md px-1.5 text-xs",
-        selected
-          ? "bg-accent text-accent-foreground"
-          : "text-foreground/70 hover:bg-accent/50 hover:text-foreground",
+        selected && focused
+          ? "bg-primary/15 text-foreground outline-primary/60 font-medium outline-1 -outline-offset-1"
+          : selected
+            ? "bg-accent text-accent-foreground"
+            : "text-foreground/70 hover:bg-accent/50 hover:text-foreground",
       )}
+      aria-current={focused && selected ? "true" : undefined}
     >
       <span
         aria-hidden
