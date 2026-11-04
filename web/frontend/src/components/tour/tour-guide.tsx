@@ -46,7 +46,7 @@ export function TourGuide() {
       title: t("tour.models.title"),
       description: t("tour.models.description"),
       targetSelector: "[data-tour='models-nav']",
-      position: "right",
+      position: "bottom",
     },
     gateway: {
       title: t("tour.gateway.title"),

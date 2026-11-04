@@ -14,7 +14,8 @@
     "show_less_channels": "Less",
     "config": "Config",
     "logs": "Logs",
-    "terminal": "Terminal"
+    "terminal": "Terminal",
+    "sections": "Sections"
   },
   "launcherLogin": {
     "title": "Sign in",
@@ -1061,7 +1062,7 @@
     },
     "models": {
       "title": "Configure Models",
-      "description": "Click the \"Models\" menu on the left to configure API keys for AI providers. Only configured models can be used for chat."
+      "description": "Click Models at the top to add an API key for your provider. Only a configured model can be used in chat."
     },
     "gateway": {
       "title": "Start Gateway",

@@ -14,7 +14,8 @@
     "show_less_channels": "收起",
     "config": "配置",
     "logs": "日志",
-    "terminal": "终端"
+    "terminal": "终端",
+    "sections": "分区"
   },
   "launcherLogin": {
     "title": "登录",
@@ -1061,7 +1062,7 @@
     },
     "models": {
       "title": "配置模型",
-      "description": "点击左侧「模型」菜单，为 AI 服务商配置 API Key。只有配置好的模型才能用于对话。"
+      "description": "点击顶部「模型」，为 AI 服务商配置 API Key。只有配置好的模型才能用于对话。"
     },
     "gateway": {
       "title": "启动服务",
