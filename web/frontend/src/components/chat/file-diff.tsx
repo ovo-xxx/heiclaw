@@ -1,7 +1,3 @@
-import { IconChevronRight } from "@tabler/icons-react"
-import { useState } from "react"
-import { useTranslation } from "react-i18next"
-
 // git-diff-view renders the unified diff hunks produced by the backend
 // (pkg/tools/shared/diff_result.go) natively as a React tree. The library's
 // DiffView does not include a file header (no file name / +/- counts), so we
@@ -14,6 +10,9 @@ import { useTranslation } from "react-i18next"
 // re-parses on every theme flip, which is cheap for chat-sized diffs.
 import { DiffModeEnum, DiffView } from "@git-diff-view/react"
 import "@git-diff-view/react/styles/diff-view.css"
+import { IconChevronRight } from "@tabler/icons-react"
+import { useState } from "react"
+import { useTranslation } from "react-i18next"
 
 import { useHtmlTheme } from "@/hooks/use-theme"
 import { cn } from "@/lib/utils"
@@ -23,7 +22,10 @@ import { cn } from "@/lib/utils"
 const FOLD_AFTER_FILES = 4
 const FOLD_AFTER_LINES = 60
 
-export function diffOpensByDefault(fileCount: number, changedLines: number): boolean {
+export function diffOpensByDefault(
+  fileCount: number,
+  changedLines: number,
+): boolean {
   return fileCount <= FOLD_AFTER_FILES && changedLines <= FOLD_AFTER_LINES
 }
 

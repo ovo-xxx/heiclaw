@@ -5,7 +5,7 @@ import {
   parseAssistantMessageUpdateState,
 } from "@/features/chat/assistant-message-state"
 import { normalizeUnixTimestamp } from "@/features/chat/state"
-import { parseTurnStats, parseToolStatRecord } from "@/features/chat/turn-stats"
+import { parseToolStatRecord, parseTurnStats } from "@/features/chat/turn-stats"
 import {
   type ChatAttachment,
   type ContextUsage,
@@ -81,9 +81,13 @@ function parseContextUsage(
   return {
     used_tokens: used,
     total_tokens: total,
-    history_tokens: obj.history_tokens != null ? Number(obj.history_tokens) : undefined,
+    history_tokens:
+      obj.history_tokens != null ? Number(obj.history_tokens) : undefined,
     compress_at_tokens: Number(obj.compress_at_tokens) || 0,
-    summarize_at_tokens: obj.summarize_at_tokens != null ? Number(obj.summarize_at_tokens) : undefined,
+    summarize_at_tokens:
+      obj.summarize_at_tokens != null
+        ? Number(obj.summarize_at_tokens)
+        : undefined,
     used_percent: Number(obj.used_percent) || 0,
   }
 }
@@ -317,9 +321,7 @@ export function handlePicoMessage(
               toolCalls,
               ...(modelName ? { modelName } : {}),
               ...(attachments ? { attachments } : {}),
-              ...(turnUsage
-                ? { usage: turnUsage, timestamp: Date.now() }
-                : {}),
+              ...(turnUsage ? { usage: turnUsage, timestamp: Date.now() } : {}),
               ...(stats ? { stats } : {}),
               ...(fileChanges ? { fileChanges } : {}),
             }
