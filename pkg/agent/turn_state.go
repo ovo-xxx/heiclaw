@@ -14,6 +14,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/config"
 	"github.com/sipeed/picoclaw/pkg/logger"
 	"github.com/sipeed/picoclaw/pkg/providers"
+	"github.com/sipeed/picoclaw/pkg/providers/pricing"
 	"github.com/sipeed/picoclaw/pkg/session"
 	"github.com/sipeed/picoclaw/pkg/tools"
 )
@@ -147,6 +148,7 @@ func llmCallStat(
 	iteration int,
 	attempts int,
 	latency time.Duration,
+	startedAt time.Time,
 ) providers.LLMCallStat {
 	stat := providers.LLMCallStat{
 		Iteration:        iteration,
@@ -164,6 +166,19 @@ func llmCallStat(
 	}
 	if attempts > 1 {
 		stat.RetryAttempt = attempts
+	}
+	if !startedAt.IsZero() {
+		stat.StartedAtMS = startedAt.UnixMilli()
+		// The price row is looked up by the model this call was actually made
+		// against, which is the same string the panel shows. activeModelConfig only
+		// fills in on the switch/override paths, where the recorded name is the
+		// user's alias ("fast") and the resolved entry carries the upstream
+		// identifier a price table knows.
+		model := stat.Model
+		if _, ok := pricing.TableFor(model); !ok && exec.activeModelConfig != nil {
+			model = exec.activeModelConfig.Model
+		}
+		stat.Cost = pricing.ForCall(model, startedAt, stat.Tokens)
 	}
 	return stat
 }
@@ -1040,6 +1055,9 @@ func (ts *turnState) GetTurnStats(contextUsage *bus.ContextUsage) *providers.Tur
 		FinishReason:        ts.lastFinishReason,
 		LLMCalls:            append([]providers.LLMCallStat(nil), ts.llmCallStats...),
 	}
+	// Calls beyond the recorded cap cannot be priced, so the total says how many it
+	// left out instead of reading as the whole bill.
+	stats.Cost = pricing.Sum(stats.LLMCalls, ts.llmCallCount)
 	if !ts.startedAt.IsZero() {
 		stats.DurationMS = time.Since(ts.startedAt).Milliseconds()
 	}

@@ -121,6 +121,43 @@ func (t TurnTokens) IsZero() bool {
 		t.CacheReadTokens == 0 && t.CacheCreationTokens == 0 && t.ReasoningTokens == 0 && t.CostUSD == 0
 }
 
+// WireUsage widens UsageInfo for the OpenAI-compatible wire format, where some
+// providers (DeepSeek) report the cached part of the input *inside* prompt_tokens
+// instead of as a separate dimension:
+//
+//	prompt_tokens == prompt_cache_hit_tokens + prompt_cache_miss_tokens
+//
+// UsageInfo's convention bills cached input apart from fresh input, so decoding
+// straight into it would read a cache hit as ordinary input and price it four to
+// fifty times too high. Resolve() applies the split.
+type WireUsage struct {
+	UsageInfo
+	PromptCacheHitTokens  int `json:"prompt_cache_hit_tokens"`
+	PromptCacheMissTokens int `json:"prompt_cache_miss_tokens"`
+}
+
+// Resolve returns the usage spelled with UsageInfo's dimensions. A payload with no
+// cache categories is returned as it arrived, so providers that report nothing
+// about caching keep their existing shape.
+func (w *WireUsage) Resolve() *UsageInfo {
+	if w == nil {
+		return nil
+	}
+	usage := w.UsageInfo
+	hit := w.PromptCacheHitTokens
+	if hit <= 0 {
+		return &usage
+	}
+	usage.CacheReadTokens = hit
+	switch {
+	case w.PromptCacheMissTokens > 0:
+		usage.PromptTokens = w.PromptCacheMissTokens
+	case usage.PromptTokens >= hit:
+		usage.PromptTokens -= hit
+	}
+	return &usage
+}
+
 // LLMCallStat is one completed LLM call inside a turn. A turn that loops over
 // tools makes several calls, so the turn total is not any single entry here.
 type LLMCallStat struct {
@@ -147,6 +184,42 @@ type LLMCallStat struct {
 	FallbackAttempt  int  `json:"fallback_attempt,omitempty"`
 	ToolCalls        int  `json:"tool_calls,omitempty"`
 	ContentChars     int  `json:"content_chars,omitempty"`
+
+	// StartedAtMS is when this call began, in unix milliseconds. The money a call
+	// costs depends on the hour (DeepSeek prices peak and off-peak differently),
+	// and a turn can straddle a boundary, so the band is decided per call.
+	StartedAtMS int64 `json:"started_at_ms,omitempty"`
+	// Cost is what this call cost under the provider's published price table.
+	// Absent for models no table covers, rather than a zero that reads as free.
+	Cost *CallCost `json:"cost,omitempty"`
+}
+
+// CallCost is the priced breakdown of one LLM call. The token categories are
+// priced separately and the peak band doubles the rate, so the split travels with
+// the total: a reader can check the number against the published table.
+type CallCost struct {
+	Currency  string  `json:"currency"`
+	Amount    float64 `json:"amount"`
+	Input     float64 `json:"input"`
+	CacheRead float64 `json:"cache_read"`
+	Output    float64 `json:"output"`
+	Peak      bool    `json:"peak"`
+	// Table names the price row used, so the panel can say which table and how
+	// old it is.
+	Table string `json:"table,omitempty"`
+}
+
+// TurnCost is the summed call cost of a turn. Calls priced in different currencies
+// are not added together, so the total only appears when one currency covers the
+// turn; the per-call numbers stay in llm_calls either way.
+type TurnCost struct {
+	Currency     string  `json:"currency"`
+	Amount       float64 `json:"amount"`
+	PeakCalls    int     `json:"peak_calls,omitempty"`
+	OffPeakCalls int     `json:"off_peak_calls,omitempty"`
+	CoveredCalls int     `json:"covered_calls"`
+	Uncounted    int     `json:"uncounted_calls,omitempty"`
+	Table        string  `json:"table,omitempty"`
 }
 
 // ToolStat is one tool run of the turn. Kept deliberately small: session JSONL
@@ -194,6 +267,9 @@ type TurnStats struct {
 	LLMCalls     []LLMCallStat     `json:"llm_calls,omitempty"`
 	Tools        []ToolStat        `json:"tools,omitempty"`
 	ContextUsage *TurnContextUsage `json:"context_usage,omitempty"`
+	// Cost is the money the turn's priced calls cost. Absent when no call matched
+	// a price table.
+	Cost *TurnCost `json:"cost,omitempty"`
 }
 
 // FileChange describes one file a turn modified. Diff is a unified diff capped by

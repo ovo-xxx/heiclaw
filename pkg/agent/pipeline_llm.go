@@ -320,14 +320,17 @@ func (p *Pipeline) CallLLM(
 	}
 	// llmCallAttempts / llmCallLatency describe the attempt that finally
 	// succeeded, so the per-call stats can say whether a retry or a fallback
-	// produced the response.
+	// produced the response. llmCallStartedAt is its wall clock, which is what
+	// decides the price band the call falls in.
 	var (
-		llmCallAttempts int
-		llmCallLatency  time.Duration
+		llmCallAttempts  int
+		llmCallLatency   time.Duration
+		llmCallStartedAt time.Time
 	)
 	for retry := 0; retry <= maxRetries; retry++ {
 		llmCallAttempts = retry + 1
 		callStartedAt := time.Now()
+		llmCallStartedAt = callStartedAt
 		exec.response, err = callLLM(exec.callMessages, exec.providerToolDefs)
 		llmCallLatency = time.Since(callStartedAt)
 		if err == nil {
@@ -566,7 +569,7 @@ func (p *Pipeline) CallLLM(
 	// what the streaming publisher reads via GetTurnUsage at finalize.
 	if ts != nil {
 		ts.SetLastFinishReason(exec.response.FinishReason)
-		ts.RecordLLMCall(llmCallStat(exec, iteration, llmCallAttempts, llmCallLatency))
+		ts.RecordLLMCall(llmCallStat(exec, iteration, llmCallAttempts, llmCallLatency, llmCallStartedAt))
 	}
 
 	if exec.suppressReasoning {

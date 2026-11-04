@@ -19,6 +19,8 @@ type (
 	ToolStat               = protocoltypes.ToolStat
 	TurnContextUsage       = protocoltypes.TurnContextUsage
 	TurnStats              = protocoltypes.TurnStats
+	CallCost               = protocoltypes.CallCost
+	TurnCost               = protocoltypes.TurnCost
 	Message                = protocoltypes.Message
 	ToolDefinition         = protocoltypes.ToolDefinition
 	ToolFunctionDefinition = protocoltypes.ToolFunctionDefinition
