@@ -187,7 +187,8 @@
       "search": "检索",
       "web": "联网查询",
       "toolCount": "执行工具 {{count}} 次",
-      "thoughtCount": "思考 {{count}} 段"
+      "thoughtCount": "思考 {{count}} 段",
+      "running": "执行中"
     },
     "diffEmpty": "这次改动没有返回可显示的差异内容。",
     "diffBinary": "二进制文件，没有可显示的文本差异。"

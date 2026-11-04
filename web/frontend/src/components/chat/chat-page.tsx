@@ -36,6 +36,7 @@ import {
 import {
   buildRenderItems,
   toolStatsForTurn,
+  turnHasResult,
 } from "@/features/chat/activity-stream"
 import {
   CHAT_IMAGE_ACCEPT,
@@ -403,6 +404,7 @@ export function ChatPage() {
                   <ActivityFeed
                     messages={item.messages}
                     toolStats={toolStatsForTurn(messages, item.index)}
+                    turnComplete={turnHasResult(messages, item.index)}
                   />
                 </div>
               )

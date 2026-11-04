@@ -1,6 +1,7 @@
 import type { TurnToolStat } from "@/api/sessions"
 import type { AssistantDetailVisibility } from "@/features/chat/detail-visibility"
 import { shouldShowAssistantMessage } from "@/features/chat/detail-visibility"
+import { normalizeUnixTimestamp } from "@/features/chat/state"
 import { toolActivity } from "@/features/chat/tool-labels"
 import { summarizeToolArguments } from "@/features/chat/tool-summary"
 import type { ChatMessage, ChatToolCall } from "@/store/chat"
@@ -83,6 +84,41 @@ export function toolStatsForTurn(
   return []
 }
 
+// The row's clock: the wire sends either seconds or milliseconds, and a timer needs
+// milliseconds. A missing timestamp leaves the row without a start, which the feed
+// reads as "not running".
+function startMillis(
+  timestamp: string | number | undefined,
+): number | undefined {
+  if (timestamp === undefined) {
+    return undefined
+  }
+  const value = typeof timestamp === "number" ? timestamp : Number(timestamp)
+  if (!Number.isFinite(value) || value <= 0) {
+    return undefined
+  }
+  return normalizeUnixTimestamp(value)
+}
+
+// Whether the turn that starts at startIndex has already produced its result. Until
+// it has, a row without a record is still running; after it has, a row without one
+// simply has no record.
+export function turnHasResult(
+  messages: ChatMessage[],
+  startIndex: number,
+): boolean {
+  for (let index = startIndex; index < messages.length; index += 1) {
+    const message = messages[index]
+    if (message.role === "user") {
+      return false
+    }
+    if (message.stats) {
+      return true
+    }
+  }
+  return false
+}
+
 export interface ActivityRow {
   id: string
   kind: "thought" | "tool"
@@ -96,6 +132,8 @@ export interface ActivityRow {
   // What the model said it was about to do, when it said one.
   explanation?: string
   timestamp?: string | number
+  /** When the call was announced; a row with no record yet counts from here. */
+  startedAt?: number
   modelName?: string
 }
 
@@ -161,6 +199,7 @@ export function buildActivityRows(
         durationMs: record?.duration_ms,
         ok: record?.ok,
         toolCall,
+        startedAt: startMillis(message.timestamp),
         explanation:
           toolCall.extraContent?.toolFeedbackExplanation?.trim() ?? "",
         timestamp: message.timestamp,

@@ -187,7 +187,8 @@
       "search": "Search",
       "web": "Web lookup",
       "toolCount": "Ran {{count}} tools",
-      "thoughtCount": "{{count}} reasoning steps"
+      "thoughtCount": "{{count}} reasoning steps",
+      "running": "Running"
     },
     "diffEmpty": "No diff text was returned for this change.",
     "diffBinary": "Binary file — no text diff to show."

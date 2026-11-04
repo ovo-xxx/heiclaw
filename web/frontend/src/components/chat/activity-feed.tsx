@@ -1,5 +1,10 @@
-import { IconBrain, IconChevronDown, IconTool } from "@tabler/icons-react"
-import { useMemo, useState } from "react"
+import {
+  IconBrain,
+  IconChevronDown,
+  IconLoader2,
+  IconTool,
+} from "@tabler/icons-react"
+import { useEffect, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 
 import type { TurnToolStat } from "@/api/sessions"
@@ -20,10 +25,13 @@ import type { ChatMessage } from "@/store/chat"
 export function ActivityFeed({
   messages,
   toolStats = [],
+  turnComplete = false,
 }: {
   messages: ChatMessage[]
   /** The turn's tool records, taken from its answer message. */
   toolStats?: TurnToolStat[]
+  /** Whether the turn already produced its result message. */
+  turnComplete?: boolean
 }) {
   const { t } = useTranslation()
   const rows = useMemo(
@@ -32,6 +40,9 @@ export function ActivityFeed({
   )
   const [openRows, setOpenRows] = useState<Record<string, boolean>>({})
   const [isCollapsed, setIsCollapsed] = useState(false)
+  // One clock for the whole stream: a running row counts up once a second, and the
+  // timer stops the moment the turn is no longer streaming.
+  const now = useNow(!turnComplete)
 
   if (rows.length === 0) {
     return null
@@ -79,6 +90,8 @@ export function ActivityFeed({
             <ActivityRowLine
               key={row.id}
               row={row}
+              now={now}
+              turnComplete={turnComplete}
               open={openRows[row.id] ?? false}
               onToggle={() =>
                 setOpenRows((prev) => ({ ...prev, [row.id]: !prev[row.id] }))
@@ -91,12 +104,29 @@ export function ActivityFeed({
   )
 }
 
+// One interval for the whole stream instead of one per row.
+function useNow(enabled: boolean): number {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (!enabled) {
+      return
+    }
+    const id = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [enabled])
+  return now
+}
+
 function ActivityRowLine({
   row,
+  now,
+  turnComplete,
   open,
   onToggle,
 }: {
   row: ActivityRow
+  now: number
+  turnComplete: boolean
   open: boolean
   onToggle: () => void
 }) {
@@ -104,6 +134,20 @@ function ActivityRowLine({
   const isThought = row.kind === "thought"
   const activity = isThought ? null : toolActivity(row.fallbackLabel)
   const Icon = isThought ? IconBrain : (activity?.icon ?? IconTool)
+  // A row with no record yet is still executing - but only while the turn streams, so
+  // an aborted turn cannot leave a row counting forever.
+  const running =
+    !isThought &&
+    !turnComplete &&
+    row.durationMs === undefined &&
+    row.ok === undefined &&
+    row.startedAt !== undefined &&
+    // A turn that was aborted publishes no result, so the row would tick forever;
+    // ten minutes is far past any real tool and stops that silently.
+    now - row.startedAt < 10 * 60 * 1000
+  const elapsedMs = running
+    ? Math.max(now - (row.startedAt ?? now), 0)
+    : undefined
   const label = isThought
     ? t("chat.reasoningLabel")
     : activity?.labelKey
@@ -124,12 +168,16 @@ function ActivityRowLine({
         }}
         className="hover:bg-muted/40 flex w-full cursor-pointer items-baseline gap-2 px-3 py-1.5 text-[12px] transition-colors"
       >
-        <Icon
-          className={cn(
-            "size-3.5 shrink-0 self-center opacity-60",
-            row.ok === false && "text-red-500/80",
-          )}
-        />
+        {running ? (
+          <IconLoader2 className="size-3.5 shrink-0 animate-spin self-center opacity-60" />
+        ) : (
+          <Icon
+            className={cn(
+              "size-3.5 shrink-0 self-center opacity-60",
+              row.ok === false && "text-red-500/80",
+            )}
+          />
+        )}
         <span className="text-foreground/80 shrink-0">{label}</span>
         {row.summary && (
           <span
@@ -142,14 +190,19 @@ function ActivityRowLine({
             {row.summary}
           </span>
         )}
+        {running && (
+          <span className="text-muted-foreground/60 shrink-0 text-[11px]">
+            {t("chat.activity.running")}
+          </span>
+        )}
         {row.ok === false && (
           <span className="shrink-0 text-[11px] text-red-500/80 dark:text-red-400/80">
             {t("chat.turnStats.toolFailed")}
           </span>
         )}
-        {row.durationMs !== undefined && (
+        {(running ? elapsedMs : row.durationMs) !== undefined && (
           <span className="text-muted-foreground/50 ml-auto shrink-0 tabular-nums">
-            {formatToolDuration(row.durationMs)}
+            {formatToolDuration((running ? elapsedMs : row.durationMs) ?? 0)}
           </span>
         )}
         <IconChevronDown
