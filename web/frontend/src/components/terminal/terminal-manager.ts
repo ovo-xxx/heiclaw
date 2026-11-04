@@ -8,6 +8,7 @@ import {
   TERMINAL_SCROLLBACK,
   terminalTheme,
 } from "@/components/terminal/terminal-theme"
+import i18n from "@/i18n"
 
 export type TerminalTabStatus = "connecting" | "open" | "exited" | "failed"
 
@@ -17,8 +18,6 @@ export interface TerminalTabInfo {
   number: number
   /** Title renamed by the user, wins over everything else. */
   customTitle: string
-  /** Title reported by the shell through OSC; empty when the shell is quiet. */
-  shellTitle: string
   status: TerminalTabStatus
   /** i18n key for the reason shown when status is exited or failed. */
   reasonKey: string
@@ -58,22 +57,13 @@ export function terminalWebSocketUrl(rows: number, cols: number): string {
   return `${protocol}//${window.location.host}/api/terminal/ws?${params.toString()}`
 }
 
-function stripTerminalControls(value: string): string {
-  // Titles arrive wrapped in OSC/BEL sequences; a control-character regex is
-  // banned by lint, so drop them by code point instead.
-  let cleaned = ""
-  for (const char of value) {
-    const code = char.charCodeAt(0)
-    if (code < 0x20 && code !== 0x09) {
-      continue
-    }
-    cleaned += char
-  }
-  return cleaned.trim()
-}
-
 function tabLabel(info: TerminalTabInfo): string {
-  return info.customTitle || info.shellTitle || `Shell ${info.number}`
+  // Stable by design: the shell's own OSC title changes with every cd, which
+  // made the tabs read as paths. Only an explicit rename overrides the number.
+  return (
+    info.customTitle ||
+    i18n.t("pages.terminal.tabName", { number: info.number })
+  )
 }
 
 /**
@@ -136,7 +126,6 @@ class TerminalManager {
         id,
         number: this.sequence,
         customTitle: "",
-        shellTitle: "",
         status: "connecting",
         reasonKey: "pages.terminal.reasonConnecting",
         epoch: 0,
@@ -156,7 +145,6 @@ class TerminalManager {
 
     term.onData((data) => this.writeStdin(session, data))
     term.onResize(({ rows, cols }) => this.sendResize(session, rows, cols))
-    term.onTitleChange((title) => this.applyShellTitle(session, title))
 
     this.sessions.set(id, session)
     this.order.push(id)
@@ -164,8 +152,9 @@ class TerminalManager {
     // The tab is still created when the client-side ceiling is reached, so the
     // user gets the reason in the pane instead of a button that does nothing.
     const localCapReached =
-      this.order.filter((item) => this.sessions.get(item)?.info.status !== "failed")
-        .length > this.maximumTabs()
+      this.order.filter(
+        (item) => this.sessions.get(item)?.info.status !== "failed",
+      ).length > this.maximumTabs()
     if (localCapReached) {
       this.mutate(session, {
         status: "failed",
@@ -232,7 +221,6 @@ class TerminalManager {
     term.loadAddon(fit)
     term.onData((data) => this.writeStdin(session, data))
     term.onResize(({ rows, cols }) => this.sendResize(session, rows, cols))
-    term.onTitleChange((title) => this.applyShellTitle(session, title))
 
     session.term = term
     session.fit = fit
@@ -354,13 +342,6 @@ class TerminalManager {
     session.term.refresh(0, session.term.rows - 1)
   }
 
-  private applyShellTitle(session: Session, reported: string) {
-    const cleaned = stripTerminalControls(reported)
-    if (cleaned && cleaned !== session.info.shellTitle) {
-      this.mutate(session, { shellTitle: cleaned })
-    }
-  }
-
   private writeStdin(session: Session, data: string) {
     if (session.ws?.readyState === WebSocket.OPEN) {
       session.ws.send(session.encoder.encode(data))
@@ -473,7 +454,10 @@ class TerminalManager {
     ws.onmessage = null
     ws.onerror = null
     ws.onclose = null
-    if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+    if (
+      ws.readyState === WebSocket.OPEN ||
+      ws.readyState === WebSocket.CONNECTING
+    ) {
       ws.close(tabCloseCode, "tab closed")
     }
   }
@@ -525,7 +509,9 @@ async function readCapacity(): Promise<TerminalCapacity | null> {
     return capacityCache
   }
   capacityCacheAt = now
-  capacityCache = fetch("/api/terminal/capacity", { credentials: "same-origin" })
+  capacityCache = fetch("/api/terminal/capacity", {
+    credentials: "same-origin",
+  })
     .then(async (response) => {
       if (!response.ok) {
         return null

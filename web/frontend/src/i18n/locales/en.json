@@ -1037,6 +1037,7 @@
     },
     "terminal": {
       "newSession": "New session",
+      "tabName": "Terminal {{number}}",
       "statusConnected": "Connected",
       "statusConnecting": "Connecting",
       "statusClosed": "Disconnected",

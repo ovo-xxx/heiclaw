@@ -208,6 +208,13 @@
   min-height: 0;
 }
 
+/* The pane inside a tab panel is sized with flex-1, which only applies if this
+   wrapper is itself a flex container. As a plain block it let the pane fall back to
+   its content height, so the shell kept 24 rows and overflowed the panel: dragging the
+   dock divider, or a split separator, resized everything above it and nothing below. */
 [data-workspace] [data-tab-content] {
+  display: flex;
+  flex-direction: column;
   height: 100%;
+  min-height: 0;
 }

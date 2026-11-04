@@ -70,7 +70,7 @@ export function TerminalPane({
     >
       <div
         ref={hostRef}
-        className="terminal-xterm border-border bg-card min-h-0 flex-1 overflow-hidden border"
+        className="terminal-xterm border-border bg-card min-h-0 flex-1 overflow-hidden border p-0.5"
       />
       {tab.status === "connecting" && !broken && (
         <div className="text-foreground/70 pointer-events-none absolute inset-x-0 bottom-1 px-3 text-[11px]">

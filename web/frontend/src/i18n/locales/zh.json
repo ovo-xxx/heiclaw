@@ -1037,6 +1037,7 @@
     },
     "terminal": {
       "newSession": "新会话",
+      "tabName": "终端 {{number}}",
       "statusConnected": "已连接",
       "statusConnecting": "连接中",
       "statusClosed": "已断开",
