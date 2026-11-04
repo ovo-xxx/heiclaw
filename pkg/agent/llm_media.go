@@ -177,6 +177,7 @@ func (p *Pipeline) routeMediaTurn(ts *turnState, exec *turnExecution) error {
 		targetModel,
 		p.Cfg.Agents.Defaults.Provider,
 	)
+	exec.activePricing = resolveActivePricing(p.Cfg, exec.activeModelConfig)
 	exec.llmModelName = resolvedModelName
 	exec.usedLight = false
 

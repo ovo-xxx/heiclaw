@@ -5,6 +5,7 @@
 package pricing
 
 import (
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -132,6 +133,9 @@ func (band *Band) IsPeak(at time.Time) bool {
 // Table is one model's price row, split by the two time bands the provider bills.
 type Table struct {
 	Name     string
+	// Provider is the model-provider id this row belongs to. The price page groups
+	// rows by it, and a provider's custom rates only apply to its own rows.
+	Provider string
 	Currency string
 	OffPeak  Rate
 	Peak     Rate
@@ -178,6 +182,7 @@ var deepSeekBand = newBand(8*3600,
 var tables = map[string]Table{
 	"deepseek-flash": {
 		Name:     "deepseek-flash",
+		Provider: "deepseek",
 		Currency: "CNY",
 		OffPeak:  Rate{InputPerMTok: 1, CacheReadPerMTok: 0.02, OutputPerMTok: 4},
 		Peak:     Rate{InputPerMTok: 2, CacheReadPerMTok: 0.04, OutputPerMTok: 8},
@@ -186,6 +191,7 @@ var tables = map[string]Table{
 	},
 	"deepseek-v4-pro": {
 		Name:     "deepseek-v4-pro",
+		Provider: "deepseek",
 		Currency: "CNY",
 		OffPeak:  Rate{InputPerMTok: 4.5, CacheReadPerMTok: 0.15, OutputPerMTok: 13.5},
 		Peak:     Rate{InputPerMTok: 9, CacheReadPerMTok: 0.3, OutputPerMTok: 27},
@@ -246,6 +252,46 @@ func SameRow(a, b string) bool {
 	rowA, okA := TableFor(a)
 	rowB, okB := TableFor(b)
 	return okA && okB && rowA.Name == rowB.Name
+}
+
+// Providers lists the provider ids that have at least one price row, sorted.
+func Providers() []string {
+	seen := map[string]bool{}
+	for _, row := range tables {
+		if row.Provider != "" {
+			seen[row.Provider] = true
+		}
+	}
+	providers := make([]string, 0, len(seen))
+	for provider := range seen {
+		providers = append(providers, provider)
+	}
+	sort.Strings(providers)
+	return providers
+}
+
+// RowsForProvider lists one provider's rows, sorted by model identifier. This is the
+// shape the price page edits: a provider names its models and their default rates.
+func RowsForProvider(provider string) []Table {
+	provider = strings.ToLower(strings.TrimSpace(provider))
+	rows := make([]Table, 0, 4)
+	for _, row := range tables {
+		if row.Provider == provider {
+			rows = append(rows, row)
+		}
+	}
+	sort.Slice(rows, func(i, j int) bool { return rows[i].Name < rows[j].Name })
+	return rows
+}
+
+// TableForProvider resolves a row only when it belongs to the given provider, so a
+// price typed under one provider can never be billed against another's model.
+func TableForProvider(provider, model string) (Table, bool) {
+	table, ok := TableFor(model)
+	if !ok || table.Provider != strings.ToLower(strings.TrimSpace(provider)) {
+		return Table{}, false
+	}
+	return table, true
 }
 
 // RatesOverride replaces a row's numbers for one configured model. A custom price is

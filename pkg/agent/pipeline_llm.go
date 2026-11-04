@@ -818,6 +818,7 @@ func (p *Pipeline) applyBeforeLLMModelRewrite(ts *turnState, exec *turnExecution
 	exec.activeModel = resolvedCandidateModel(candidates, rawModel)
 	exec.llmModel = exec.activeModel
 	exec.activeModelConfig = resolveActiveModelConfig(p.Cfg, ts.agent.Workspace, candidates, rawModel, defaultProvider)
+	exec.activePricing = resolveActivePricing(p.Cfg, exec.activeModelConfig)
 	return nil
 }
 

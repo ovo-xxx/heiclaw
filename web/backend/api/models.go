@@ -16,7 +16,6 @@ import (
 	"github.com/sipeed/picoclaw/pkg/config"
 	"github.com/sipeed/picoclaw/pkg/logger"
 	"github.com/sipeed/picoclaw/pkg/providers"
-	"github.com/sipeed/picoclaw/pkg/providers/pricing"
 )
 
 // registerModelRoutes binds model list management endpoints to the ServeMux.
@@ -65,11 +64,6 @@ type modelResponse struct {
 	Streaming            config.ModelStreamingConfig `json:"streaming,omitempty"`
 	ExtraBody            map[string]any              `json:"extra_body,omitempty"`
 	CustomHeaders        map[string]string           `json:"custom_headers,omitempty"`
-	// Pricing is what the user typed for this model, and PriceCurrency is the row's
-	// currency (rules stay in code). The form shows the section only when a row
-	// exists, since a price with no currency or band cannot be billed.
-	Pricing       *config.ModelPricing `json:"pricing,omitempty"`
-	PriceCurrency string               `json:"price_currency,omitempty"`
 	// Meta
 	Enabled             bool   `json:"enabled"`
 	Available           bool   `json:"available"`
@@ -157,21 +151,11 @@ func normalizeStoredModelConfig(mc *config.ModelConfig, defaultProvider string) 
 	return changed
 }
 
-// priceTableFor reports the built-in row a model's custom rates would attach to.
-// No row means no currency and no band, so the panel does not offer a price form.
-func priceTableFor(model string) (pricing.Table, bool) {
-	return pricing.TableFor(model)
-}
-
 func normalizeIncomingModelConfig(mc *config.ModelConfig, defaultProvider string) {
 	if mc == nil {
 		return
 	}
 
-	// Three zeros would bill every call as free; an empty block means "use the row".
-	if mc.Pricing.IsZero() {
-		mc.Pricing = nil
-	}
 
 	mc.ModelName = strings.TrimSpace(mc.ModelName)
 	mc.Model = strings.TrimSpace(mc.Model)
@@ -223,25 +207,12 @@ func cliProviderCreateAllowedFromCurrentStatus(provider string) bool {
 	return status.Available
 }
 
-// modelProviderOptionResponse adds the one fact about billing the provider catalog
-// lives too low to know: whether this backend has a price row for it.
-type modelProviderOptionResponse struct {
-	providers.ModelProviderOption
-	PriceCurrency string `json:"price_currency,omitempty"`
-}
-
-func modelProviderOptionsForResponse() []modelProviderOptionResponse {
+func modelProviderOptionsForResponse() []providers.ModelProviderOption {
 	options := providers.ModelProviderOptions()
-	out := make([]modelProviderOptionResponse, 0, len(options))
-	for _, option := range options {
-		option.CreateAllowed = createAllowedForProvider(option.ID)
-		currency, _ := pricing.CurrencyForProvider(option.ID)
-		out = append(out, modelProviderOptionResponse{
-			ModelProviderOption: option,
-			PriceCurrency:       currency,
-		})
+	for i := range options {
+		options[i].CreateAllowed = createAllowedForProvider(options[i].ID)
 	}
-	return out
+	return options
 }
 func defaultModelAllowedForModelConfig(mc *config.ModelConfig, defaultProvider string) bool {
 	provider, _ := modelConfigProviderAndID(mc, defaultProvider)
@@ -676,14 +647,6 @@ func (h *Handler) handleListModels(w http.ResponseWriter, r *http.Request) {
 	models := make([]modelResponse, 0, len(cfg.ModelList))
 	for i, m := range cfg.ModelList {
 		provider, modelID := providers.ExtractProtocol(m)
-		pricing := m.Pricing
-		if pricing.IsZero() {
-			pricing = nil
-		}
-		priceCurrency := ""
-		if table, ok := priceTableFor(m.Model); ok {
-			priceCurrency = table.Currency
-		}
 		models = append(models, modelResponse{
 			Index:                i,
 			ModelName:            m.ModelName,
@@ -706,8 +669,6 @@ func (h *Handler) handleListModels(w http.ResponseWriter, r *http.Request) {
 			Streaming:            m.Streaming,
 			ExtraBody:            m.ExtraBody,
 			CustomHeaders:        m.CustomHeaders,
-			Pricing:              pricing,
-			PriceCurrency:        priceCurrency,
 			Enabled:              m.Enabled,
 			Available:            modelStatuses[i].Available,
 			Status:               modelStatuses[i].Status,

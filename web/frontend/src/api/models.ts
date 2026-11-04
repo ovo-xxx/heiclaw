@@ -32,14 +32,6 @@ export interface ModelInfo {
   }
   extra_body?: Record<string, unknown>
   custom_headers?: Record<string, string>
-  // Rates the user typed for this entry, per million tokens. The currency and the
-  // peak rule still come from the built-in row (price_currency below).
-  pricing?: {
-    input_per_mtok: number
-    cache_read_per_mtok: number
-    output_per_mtok: number
-  }
-  price_currency?: string
   // Meta
   enabled: boolean
   available: boolean
@@ -56,9 +48,6 @@ export interface ModelProviderOption {
   domain?: string
   default_api_base: string
   empty_api_key_allowed: boolean
-  // Set only when this backend has a price row for the provider, which is what
-  // decides whether the add form offers the custom-rate section.
-  price_currency?: string
   create_allowed: boolean
   default_model_allowed: boolean
   supports_fetch?: boolean

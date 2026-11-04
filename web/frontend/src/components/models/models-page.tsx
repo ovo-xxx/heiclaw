@@ -1,10 +1,12 @@
 import {
   IconArrowsSort,
+  IconCoin,
   IconDatabase,
   IconLoader2,
   IconPlus,
   IconStar,
 } from "@tabler/icons-react"
+import { Link } from "@tanstack/react-router"
 import {
   useCallback,
   useEffect,
@@ -991,6 +993,12 @@ export function ModelsPage() {
           >
             <IconPlus className="size-4" />
             {t("models.add.button")}
+          </Button>
+          <Button size="sm" variant="outline" asChild>
+            <Link to="/pricing">
+              <IconCoin className="size-4" />
+              {t("pages.pricing.title")}
+            </Link>
           </Button>
         </div>
       </PageHeader>

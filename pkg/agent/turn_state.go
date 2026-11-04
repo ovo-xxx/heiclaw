@@ -140,6 +140,29 @@ type llmCallMetrics struct {
 // turnExecution - mutable state that persists across turn loop iterations
 // =============================================================================
 
+// resolveActivePricing reads the provider's rate table for the model this turn runs
+// on. Rates are keyed by provider and then upstream model id, so the alias the user
+// picked never has to appear in the price file.
+func resolveActivePricing(cfg *config.Config, mc *config.ModelConfig) *pricing.RatesOverride {
+	if cfg == nil || mc == nil {
+		return nil
+	}
+	provider := strings.ToLower(strings.TrimSpace(mc.Provider))
+	entry, ok := cfg.Pricing[provider]
+	if !ok {
+		return nil
+	}
+	rates, ok := entry.Models[strings.TrimSpace(mc.Model)]
+	if !ok || rates.IsZero() {
+		return nil
+	}
+	return &pricing.RatesOverride{
+		InputPerMTok:     rates.InputPerMTok,
+		CacheReadPerMTok: rates.CacheReadPerMTok,
+		OutputPerMTok:    rates.OutputPerMTok,
+	}
+}
+
 // llmCallStat spells one completed provider response as the per-call entry of
 // the turn performance record. Latency covers the whole attempt (including the
 // stream-to-completion fallback), attempts come from llmCallMetrics.
@@ -175,21 +198,16 @@ func llmCallStat(
 		// user's alias ("fast") and the resolved entry carries the upstream
 		// identifier a price table knows.
 		model := stat.Model
-		var rates *pricing.RatesOverride
+		rates := exec.activePricing
 		if exec.activeModelConfig != nil {
 			cfgModel := exec.activeModelConfig.Model
 			if _, ok := pricing.TableFor(model); !ok {
 				model = cfgModel
 			}
-			// The custom rates belong to the entry the turn selected. A fallback that
-			// answered under another id keeps its own row's numbers instead of
-			// inheriting a price that was typed for a different model.
-			if p := exec.activeModelConfig.Pricing; !p.IsZero() && pricing.SameRow(model, cfgModel) {
-				rates = &pricing.RatesOverride{
-					InputPerMTok:     p.InputPerMTok,
-					CacheReadPerMTok: p.CacheReadPerMTok,
-					OutputPerMTok:    p.OutputPerMTok,
-				}
+			// The rates belong to the provider table entry the turn selected. A
+			// fallback that answered under another id keeps its own row's numbers.
+			if rates != nil && !pricing.SameRow(model, cfgModel) {
+				rates = nil
 			}
 		}
 		stat.Cost = pricing.ForCallWithRates(model, startedAt, stat.Tokens, rates)
@@ -197,8 +215,7 @@ func llmCallStat(
 	return stat
 }
 
-type turnExecution struct {
-	// Core message state (accumulates throughout the turn)
+type turnExecution struct {	// Core message state (accumulates throughout the turn)
 	messages         []providers.Message // built from ContextBuilder, grows per-iteration
 	pendingMessages  []providers.Message // steering/SubTurn messages awaiting injection
 	history          []providers.Message // from ContextManager.Assemble
@@ -215,8 +232,11 @@ type turnExecution struct {
 	activeCandidates  []providers.FallbackCandidate
 	activeModel       string
 	activeModelConfig *config.ModelConfig
-	activeProvider    providers.LLMProvider
-	usedLight         bool
+	// activePricing is the rate set this turn's provider table holds for the selected
+	// model, or nil when the user kept the built-in numbers.
+	activePricing  *pricing.RatesOverride
+	activeProvider providers.LLMProvider
+	usedLight      bool
 
 	// LLM call per-iteration state
 	response            *providers.LLMResponse

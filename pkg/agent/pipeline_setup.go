@@ -156,6 +156,7 @@ func (p *Pipeline) SetupTurn(ctx context.Context, ts *turnState) (*turnExecution
 		activeModel,
 		p.Cfg.Agents.Defaults.Provider,
 	)
+	exec.activePricing = resolveActivePricing(p.Cfg, exec.activeModelConfig)
 	exec.llmModelName = activeModelName
 	exec.activeProvider = activeProvider
 	exec.usedLight = usedLight

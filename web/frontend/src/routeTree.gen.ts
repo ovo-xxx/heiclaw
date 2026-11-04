@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TerminalRouteImport } from './routes/terminal'
+import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as ModelsRouteImport } from './routes/models'
 import { Route as LogsRouteImport } from './routes/logs'
 import { Route as LauncherSetupRouteImport } from './routes/launcher-setup'
@@ -29,6 +30,11 @@ import { Route as AgentHubRouteImport } from './routes/agent/hub'
 const TerminalRoute = TerminalRouteImport.update({
   id: '/terminal',
   path: '/terminal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PricingRoute = PricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ModelsRoute = ModelsRouteImport.update({
@@ -117,6 +123,7 @@ export interface FileRoutesByFullPath {
   '/launcher-setup': typeof LauncherSetupRoute
   '/logs': typeof LogsRoute
   '/models': typeof ModelsRoute
+  '/pricing': typeof PricingRoute
   '/terminal': typeof TerminalRoute
   '/agent/hub': typeof AgentHubRoute
   '/agent/skills': typeof AgentSkillsRoute
@@ -135,6 +142,7 @@ export interface FileRoutesByTo {
   '/launcher-setup': typeof LauncherSetupRoute
   '/logs': typeof LogsRoute
   '/models': typeof ModelsRoute
+  '/pricing': typeof PricingRoute
   '/terminal': typeof TerminalRoute
   '/agent/hub': typeof AgentHubRoute
   '/agent/skills': typeof AgentSkillsRoute
@@ -154,6 +162,7 @@ export interface FileRoutesById {
   '/launcher-setup': typeof LauncherSetupRoute
   '/logs': typeof LogsRoute
   '/models': typeof ModelsRoute
+  '/pricing': typeof PricingRoute
   '/terminal': typeof TerminalRoute
   '/agent/hub': typeof AgentHubRoute
   '/agent/skills': typeof AgentSkillsRoute
@@ -174,6 +183,7 @@ export interface FileRouteTypes {
     | '/launcher-setup'
     | '/logs'
     | '/models'
+    | '/pricing'
     | '/terminal'
     | '/agent/hub'
     | '/agent/skills'
@@ -192,6 +202,7 @@ export interface FileRouteTypes {
     | '/launcher-setup'
     | '/logs'
     | '/models'
+    | '/pricing'
     | '/terminal'
     | '/agent/hub'
     | '/agent/skills'
@@ -210,6 +221,7 @@ export interface FileRouteTypes {
     | '/launcher-setup'
     | '/logs'
     | '/models'
+    | '/pricing'
     | '/terminal'
     | '/agent/hub'
     | '/agent/skills'
@@ -229,6 +241,7 @@ export interface RootRouteChildren {
   LauncherSetupRoute: typeof LauncherSetupRoute
   LogsRoute: typeof LogsRoute
   ModelsRoute: typeof ModelsRoute
+  PricingRoute: typeof PricingRoute
   TerminalRoute: typeof TerminalRoute
   ChatSessionIdRoute: typeof ChatSessionIdRoute
 }
@@ -240,6 +253,13 @@ declare module '@tanstack/react-router' {
       path: '/terminal'
       fullPath: '/terminal'
       preLoaderRoute: typeof TerminalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/models': {
@@ -397,6 +417,7 @@ const rootRouteChildren: RootRouteChildren = {
   LauncherSetupRoute: LauncherSetupRoute,
   LogsRoute: LogsRoute,
   ModelsRoute: ModelsRoute,
+  PricingRoute: PricingRoute,
   TerminalRoute: TerminalRoute,
   ChatSessionIdRoute: ChatSessionIdRoute,
 }

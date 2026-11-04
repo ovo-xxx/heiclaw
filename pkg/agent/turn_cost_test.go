@@ -6,6 +6,7 @@ import (
 
 	"github.com/sipeed/picoclaw/pkg/config"
 	"github.com/sipeed/picoclaw/pkg/providers"
+	"github.com/sipeed/picoclaw/pkg/providers/pricing"
 )
 
 // A turn's money is decided per LLM call, not per turn: DeepSeek doubles the rate
@@ -51,16 +52,17 @@ func TestLLMCallStatPricesTheCallThatAnswered(t *testing.T) {
 	}
 }
 
-// A price typed on the model entry is what the call is billed at, all day: the row's
-// peak window must not double a figure the user set.
+// A price set on the provider's table is what the call is billed at, all day: the
+// row's peak window must not double a figure the user typed.
 func TestLLMCallStatPricesWithConfiguredRates(t *testing.T) {
 	startedAt := time.Date(2026, time.November, 4, 10, 0, 0, 0, time.FixedZone("CST", 8*3600))
 	exec := &turnExecution{
 		activeModelConfig: &config.ModelConfig{
 			ModelName: "flash",
+			Provider:  "deepseek",
 			Model:     "deepseek-flash",
-			Pricing:   &config.ModelPricing{InputPerMTok: 3, CacheReadPerMTok: 0.5, OutputPerMTok: 9},
 		},
+		activePricing: &pricing.RatesOverride{InputPerMTok: 3, CacheReadPerMTok: 0.5, OutputPerMTok: 9},
 		response: &providers.LLMResponse{
 			Usage: &providers.UsageInfo{PromptTokens: 1_000_000, TotalTokens: 1_000_000},
 		},
@@ -75,6 +77,35 @@ func TestLLMCallStatPricesWithConfiguredRates(t *testing.T) {
 	}
 	if stat.Cost.InputRate != 3 {
 		t.Errorf("input rate = %v, want the configured 3", stat.Cost.InputRate)
+	}
+}
+
+// The rate set is looked up by provider and upstream model id, so the alias never
+// appears in the price file and another provider's table is not consulted.
+func TestResolveActivePricingReadsTheProviderTable(t *testing.T) {
+	cfg := &config.Config{
+		Pricing: map[string]config.ProviderPricing{
+			"deepseek": {
+				Models: map[string]config.ModelPricing{
+					"deepseek-flash": {InputPerMTok: 2, CacheReadPerMTok: 0.1, OutputPerMTok: 6},
+				},
+			},
+		},
+	}
+
+	rates := resolveActivePricing(cfg, &config.ModelConfig{Provider: "deepseek", Model: "deepseek-flash"})
+	if rates == nil || rates.InputPerMTok != 2 {
+		t.Fatalf("rates = %+v, want the provider table's input rate", rates)
+	}
+	if got := resolveActivePricing(cfg, &config.ModelConfig{Provider: "openai", Model: "deepseek-flash"}); got != nil {
+		t.Fatalf("rates = %+v, want none for another provider", got)
+	}
+	if got := resolveActivePricing(cfg, &config.ModelConfig{Provider: "deepseek", Model: "deepseek-v4-pro"}); got != nil {
+		t.Fatalf("rates = %+v, want none for a model the table does not list", got)
+	}
+	zero := &config.Config{Pricing: map[string]config.ProviderPricing{"deepseek": {Models: map[string]config.ModelPricing{"deepseek-flash": {}}}}}
+	if got := resolveActivePricing(zero, &config.ModelConfig{Provider: "deepseek", Model: "deepseek-flash"}); got != nil {
+		t.Fatalf("rates = %+v, want none for an all-zero row", got)
 	}
 }
 

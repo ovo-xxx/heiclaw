@@ -1084,6 +1084,23 @@
       "log_level_error": "更新日志等级失败。",
       "clear": "清空日志",
       "empty": "等待日志中..."
+    },
+    "pricing": {
+      "title": "价目",
+      "subtitle": "单价按每百万 token 计。币种、高峰时段和来源取自内置价目；某一项填回内置数值即表示继续使用内置价。",
+      "model": "模型",
+      "input": "输入",
+      "cacheRead": "缓存命中",
+      "output": "输出",
+      "perMillion": "每百万 token · {{currency}}",
+      "custom": "自定义",
+      "builtin": "内置",
+      "peakHint": "两档",
+      "save": "保存",
+      "saved": "价目已保存",
+      "reset": "恢复内置单价",
+      "invalidRate": "{{model}}：每一项都必须是不小于 0 的数字",
+      "empty": "当前构建没有任何供应商价目行。"
     }
   },
   "tour": {

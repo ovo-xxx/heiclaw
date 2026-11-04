@@ -41,6 +41,10 @@ type Config struct {
 	Evolution EvolutionConfig `json:"evolution,omitempty" yaml:"-"`
 	Channels  ChannelsConfig  `json:"channel_list"        yaml:"channel_list"`
 	ModelList SecureModelList `json:"model_list"          yaml:"model_list"` // New model-centric provider configuration
+	// Pricing holds the rates the user set, per provider and then per model. The
+	// billing shape around them - currency, peak window, holidays, source - belongs
+	// to the provider and lives in pkg/providers/pricing.
+	Pricing   map[string]ProviderPricing `json:"pricing,omitempty" yaml:"-"`
 	Gateway   GatewayConfig   `json:"gateway"             yaml:"-"`
 	Events    EventsConfig    `json:"events,omitempty"    yaml:"-"`
 	Hooks     HooksConfig     `json:"hooks,omitempty"     yaml:"-"`
@@ -782,6 +786,11 @@ func (c ModelStreamingConfig) IsZero() bool {
 // Supported providers include openai, anthropic, antigravity, claude-cli,
 // codex-cli, github-copilot, and named OpenAI-compatible protocols such as
 // groq, deepseek, modelscope, and novita.
+// ProviderPricing is one provider's price table: a rate set per model identifier.
+type ProviderPricing struct {
+	Models map[string]ModelPricing `json:"models,omitempty"`
+}
+
 // ModelPricing is what a user can set for a model: three per-million rates. The
 // currency, the peak window and the holidays are properties of the provider's price
 // list and stay in pkg/providers/pricing.
@@ -823,11 +832,6 @@ type ModelConfig struct {
 	Streaming           ModelStreamingConfig `json:"streaming,omitzero"`              // Opt-in for provider streaming on this model entry
 	ExtraBody           map[string]any       `json:"extra_body,omitempty"`            // Additional fields to inject into request body
 	CustomHeaders       map[string]string    `json:"custom_headers,omitempty"`        // Additional headers to inject into every HTTP request
-
-	// Pricing carries per-million rates for this entry, replacing the numbers in the
-	// built-in row. The row still supplies the currency and the peak band: how a
-	// provider bills stays in code, what it costs this user is theirs to set.
-	Pricing *ModelPricing `json:"pricing,omitempty"`
 
 	APIKeys SecureStrings `json:"api_keys,omitzero" yaml:"api_keys,omitempty"` // API authentication keys (multiple keys for failover)
 

@@ -1084,6 +1084,23 @@
       "log_level_error": "Failed to update log level.",
       "clear": "Clear logs",
       "empty": "Waiting for logs..."
+    },
+    "pricing": {
+      "title": "Pricing",
+      "subtitle": "Rates are per million tokens. The currency, the peak window and the source come from the built-in row; leave a rate equal to the built-in figure to keep using it.",
+      "model": "Model",
+      "input": "Input",
+      "cacheRead": "Cache read",
+      "output": "Output",
+      "perMillion": "per million tokens · {{currency}}",
+      "custom": "custom",
+      "builtin": "built-in",
+      "peakHint": "two bands",
+      "save": "Save",
+      "saved": "Pricing saved",
+      "reset": "Use built-in rates",
+      "invalidRate": "{{model}}: each rate must be a number of zero or more",
+      "empty": "No provider has a price row in this build."
     }
   },
   "tour": {
