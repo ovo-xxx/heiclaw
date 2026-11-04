@@ -71,7 +71,13 @@ func DiffResult(path string, before, after []byte) *ToolResult {
 // a capped unified diff plus line counts. Tools that stay silent toward the chat
 // (write_file, append_file) use it so the panel can still show what changed.
 func FileChangeFromContents(path string, before, after []byte) *providers.FileChange {
-	change := &providers.FileChange{Path: path}
+	change := &providers.FileChange{Path: path, FileLang: fileLangFor(path)}
+	if looksBinaryContent(before) || looksBinaryContent(after) {
+		// A diff of bytes the panel cannot read would be noise, so the change is
+		// reported as binary and carries no hunks.
+		change.Binary = true
+		return change
+	}
 	if exceedsDiffPreviewLimits(before, after) {
 		return change
 	}
@@ -82,7 +88,157 @@ func FileChangeFromContents(path string, before, after []byte) *providers.FileCh
 	change.Additions, change.Deletions = countChangedDiffLines(diff)
 	preview, _ := truncateDiffPreview(diff, maxUserDiffPreviewBytes)
 	change.Diff = preview
+	change.OldPath, change.NewPath = diffHeaderPaths(diff)
+	change.Hunks = capHunks(splitDiffHunks(diff), maxUserDiffPreviewBytes)
 	return change
+}
+
+// splitDiffHunks cuts a unified diff at its @@ headers so a renderer gets whole
+// hunks: a half hunk would print line numbers that no longer add up. The file header
+// block above the first hunk is dropped, because the panel draws the path itself.
+func splitDiffHunks(diff string) []string {
+	var hunks []string
+	var current []string
+	for _, line := range strings.Split(diff, "\n") {
+		if strings.HasPrefix(line, "@@") {
+			if len(current) > 0 {
+				hunks = append(hunks, strings.Join(current, "\n"))
+			}
+			current = []string{line}
+			continue
+		}
+		if current == nil {
+			continue
+		}
+		current = append(current, line)
+	}
+	if len(current) > 0 {
+		hunks = append(hunks, strings.Join(current, "\n"))
+	}
+	return hunks
+}
+
+// capHunks keeps whole hunks inside the panel's byte budget, the same ceiling the
+// preview string obeys. Dropping from the tail keeps the counts honest about what is
+// shown: the renderer still lists every hunk it was given in full.
+func capHunks(hunks []string, maxBytes int) []string {
+	kept := make([]string, 0, len(hunks))
+	total := 0
+	for _, hunk := range hunks {
+		if total+len(hunk) > maxBytes && len(kept) > 0 {
+			break
+		}
+		kept = append(kept, hunk)
+		total += len(hunk) + 1
+	}
+	if len(kept) == 0 {
+		return nil
+	}
+	return kept
+}
+
+// diffHeaderPaths reads the names unified diff writes on its first two lines. The
+// a/ and b/ prefixes are diff noise rather than part of the path, and a tab follows
+// the name when a timestamp is present; only a rename makes the two differ.
+func diffHeaderPaths(diff string) (oldPath, newPath string) {
+	for _, line := range strings.Split(diff, "\n") {
+		switch {
+		case strings.HasPrefix(line, "--- "):
+			oldPath = cleanDiffHeaderPath(strings.TrimPrefix(line, "--- "))
+		case strings.HasPrefix(line, "+++ "):
+			newPath = cleanDiffHeaderPath(strings.TrimPrefix(line, "+++ "))
+		case strings.HasPrefix(line, "@@"):
+			return oldPath, newPath
+		}
+	}
+	return oldPath, newPath
+}
+
+func cleanDiffHeaderPath(raw string) string {
+	if idx := strings.IndexByte(raw, '\t'); idx >= 0 {
+		raw = raw[:idx]
+	}
+	raw = strings.TrimSpace(raw)
+	raw = strings.TrimPrefix(raw, "a/")
+	raw = strings.TrimPrefix(raw, "b/")
+	return raw
+}
+
+// looksBinaryContent sniffs the leading bytes the way read_file does: a NUL byte or
+// invalid UTF-8 means the content is not text. The sample backs off to a rune
+// boundary first, or a file whose 512th byte splits a multi-byte character would be
+// called binary for no reason.
+func looksBinaryContent(content []byte) bool {
+	if len(content) == 0 {
+		return false
+	}
+	sample := content
+	if len(sample) > 512 {
+		sample = sample[:512]
+		// Back off to a rune boundary the same way the preview truncation does, or a
+		// cut that lands inside a multi-byte character reads as invalid UTF-8 and the
+		// file would be called binary for no reason.
+		for len(sample) > 0 && !utf8.Valid(sample) {
+			sample = sample[:len(sample)-1]
+		}
+	}
+	if bytes.ContainsRune(sample, 0) {
+		return true
+	}
+	return !utf8.Valid(sample)
+}
+
+// fileLangFor names the language for the syntax highlighter, which speaks
+// highlight.js ids, from the file extension. An unknown extension answers empty and
+// the panel renders the diff without highlighting rather than guessing.
+var fileLangByExt = map[string]string{
+	".go":         "go",
+	".ts":         "typescript",
+	".tsx":        "typescript",
+	".js":         "javascript",
+	".jsx":        "javascript",
+	".mjs":        "javascript",
+	".cjs":        "javascript",
+	".json":       "json",
+	".jsonc":      "json",
+	".md":         "markdown",
+	".markdown":   "markdown",
+	".py":         "python",
+	".rs":         "rust",
+	".rb":         "ruby",
+	".sh":         "bash",
+	".bash":       "bash",
+	".zsh":        "bash",
+	".ps1":        "powershell",
+	".yml":        "yaml",
+	".yaml":       "yaml",
+	".toml":       "ini",
+	".ini":        "ini",
+	".html":       "xml",
+	".htm":        "xml",
+	".xml":        "xml",
+	".css":        "css",
+	".scss":       "scss",
+	".sql":        "sql",
+	".c":          "c",
+	".h":          "c",
+	".cpp":        "cpp",
+	".cc":         "cpp",
+	".hpp":        "cpp",
+	".java":       "java",
+	".kt":         "kotlin",
+	".cs":         "csharp",
+	".php":        "php",
+	".lua":        "lua",
+	".dockerfile": "dockerfile",
+}
+
+func fileLangFor(path string) string {
+	base := strings.ToLower(filepath.Base(path))
+	if base == "dockerfile" {
+		return "dockerfile"
+	}
+	return fileLangByExt[strings.ToLower(filepath.Ext(path))]
 }
 
 // countChangedDiffLines counts added and removed lines in a unified diff.
