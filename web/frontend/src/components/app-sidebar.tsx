@@ -20,6 +20,7 @@ import { useTranslation } from "react-i18next"
 import { postLauncherDashboardLogout } from "@/api/launcher-auth"
 import { ConversationList } from "@/components/chat/conversation-list"
 import { ConversationSearch } from "@/components/chat/conversation-search"
+import { useStartNewChat } from "@/components/chat/use-start-new-chat"
 import { Sidebar, SidebarRail, useSidebar } from "@/components/ui/sidebar"
 import {
   DropdownMenu,
@@ -64,6 +65,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const { t } = useTranslation()
   const { isMobile, setOpenMobile } = useSidebar()
   const [view, setView] = React.useState<SidebarView>("main")
+  const startNewChat = useStartNewChat()
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   })
@@ -83,10 +85,16 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
       {view === "main" ? (
         <>
           <div className="flex shrink-0 flex-col pt-[max(0.75rem,env(safe-area-inset-top))] md:pt-3">
-            <div className="mb-1 flex h-8 shrink-0 items-center px-4">
-              <Link to="/" onClick={closeDrawer} aria-label="PicoClaw">
-                <img className="h-5" src="/logo_with_text.png" alt="PicoClaw" />
-              </Link>
+            <div className="mb-1 flex h-10 shrink-0 items-center px-3">
+              {/* The logo starts a conversation, exactly like 新建对话. */}
+              <button
+                type="button"
+                onClick={startNewChat}
+                aria-label="PicoClaw"
+                className="rounded-sm transition-opacity hover:opacity-80"
+              >
+                <img className="h-7" src="/logo_with_text.png" alt="PicoClaw" />
+              </button>
             </div>
             {/* New chat and search sit under the logo, the way the ChatGPT sidebar
                 orders them; the list they drive is rendered below the navigation. */}
@@ -189,7 +197,7 @@ function ChannelMenu({
 function SettingsMenu({ onOpenChannels }: { onOpenChannels: () => void }) {
   const { i18n, t } = useTranslation()
   const { preference, setThemePreference } = useTheme()
-  const { restartRequired, restart, canStart, loading } = useGateway()
+  const { state: gatewayState, restartRequired, restart, start, canStart, loading } = useGateway()
 
   const handleLogout = async () => {
     const result = await postLauncherDashboardLogout()
@@ -283,6 +291,17 @@ function SettingsMenu({ onOpenChannels }: { onOpenChannels: () => void }) {
             ))}
           </DropdownMenuSubContent>
         </DropdownMenuSub>
+        {gatewayState !== "running" && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              disabled={loading || !canStart}
+              onClick={() => void start()}
+            >
+              {t("header.gateway.action.start")}
+            </DropdownMenuItem>
+          </>
+        )}
         {restartRequired && (
           <>
             <DropdownMenuSeparator />

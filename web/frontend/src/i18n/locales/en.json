@@ -53,7 +53,7 @@
       "gatewayStarting": "Unable to chat: Gateway is starting. Wait for startup to complete, then try again.",
       "gatewayRestarting": "Unable to chat: Gateway is restarting. Please wait for restart to finish.",
       "gatewayStopping": "Unable to chat: Gateway is stopping. Wait for it to stop, then start Gateway again.",
-      "gatewayStopped": "Unable to chat: Gateway is not started. Click Start Gateway in the top bar, then retry.",
+      "gatewayStopped": "Unable to chat: the gateway is not running. Start it from Settings, then retry.",
       "gatewayError": "Unable to chat: Gateway is in an error state. Check logs, then restart Gateway or Launcher.",
       "websocketConnecting": "Connecting to chat service... Please wait.",
       "websocketDisconnected": "Unable to chat: WebSocket connection is disconnected. Check network and gateway status, then refresh the page or restart Launcher.",
@@ -61,7 +61,7 @@
       "noDefaultModel": "Unable to chat: No default model is selected. Set a default model on the Models page."
     },
     "newChat": "New Chat",
-    "notConnected": "Gateway is not running. Start it to chat.",
+    "notConnected": "The gateway is not running. Start it from Settings.",
     "thinking": {
       "label": "Thinking effort",
       "level": {
@@ -165,7 +165,7 @@
     },
     "noModel": "Select model",
     "inputDisabled": {
-      "notConnected": "Gateway is not running. Start it to chat.",
+      "notConnected": "The gateway is not running. Start it from Settings.",
       "noModel": "No default model configured. Go to Models page to set one."
     },
     "sendMessage": "Send message",
@@ -188,7 +188,7 @@
       "noSelectedModel": "No Model Selected",
       "noSelectedModelDescription": "You have configured models, but none is set as default. Select a model before starting chat.",
       "notRunning": "Gateway Not Running",
-      "notRunningDescription": "Start the gateway service to begin chatting. Use the Start Gateway button in the top bar."
+      "notRunningDescription": "Start the gateway service to begin chatting. Use Start Gateway in Settings."
     },
     "modelGroup": {
       "apikey": "API Key",

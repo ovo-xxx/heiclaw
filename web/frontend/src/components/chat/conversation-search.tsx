@@ -1,34 +1,18 @@
 import { IconPlus, IconSearch, IconX } from "@tabler/icons-react"
 import { useAtom } from "jotai"
-import { useNavigate } from "@tanstack/react-router"
 import { useTranslation } from "react-i18next"
 
+import { useStartNewChat } from "@/components/chat/use-start-new-chat"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { useSidebar } from "@/components/ui/sidebar"
-import { newChatSession } from "@/features/chat/controller"
 import { conversationQueryAtom } from "@/store/chat"
 
 // New chat and search sit directly under the logo, above the navigation, the way the
 // ChatGPT sidebar orders them. The query is shared with the list rendered further down.
 export function ConversationSearch() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
-  const { isMobile, setOpenMobile } = useSidebar()
   const [query, setQuery] = useAtom(conversationQueryAtom)
-
-  const closeDrawer = () => {
-    if (isMobile) {
-      setOpenMobile(false)
-    }
-  }
-
-  const handleNewChat = () => {
-    void newChatSession()
-    setQuery("")
-    navigate({ to: "/" })
-    closeDrawer()
-  }
+  const handleNewChat = useStartNewChat()
 
   return (
     <div className="flex shrink-0 flex-col gap-2 px-3 pt-1 pb-2">
