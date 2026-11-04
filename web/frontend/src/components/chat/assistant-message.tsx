@@ -17,13 +17,17 @@ import remarkGfm from "remark-gfm"
 
 import type { TurnStats } from "@/api/sessions"
 import {
-  MessageCodeBlock,
   MarkdownCodeBlock,
+  MessageCodeBlock,
 } from "@/components/chat/message-code-block"
 import { TurnStatsSummary } from "@/components/chat/turn-stats-summary"
 import { Button } from "@/components/ui/button"
-import { formatMessageTime } from "@/hooks/use-pico-chat"
+import {
+  formatToolDuration,
+  summarizeToolArguments,
+} from "@/features/chat/tool-summary"
 import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard"
+import { formatMessageTime } from "@/hooks/use-pico-chat"
 import { cn } from "@/lib/utils"
 import {
   type AssistantMessageKind,
@@ -71,7 +75,9 @@ export function AssistantMessage({
   const fileAttachments = attachments.filter(
     (attachment) => attachment.type !== "image",
   )
-  const [isExpanded, setIsExpanded] = useState(true)
+  // Reasoning and tool-call blocks start collapsed: the one-line summary below
+  // carries what happened, the raw text is the exception rather than the rule.
+  const [isExpanded, setIsExpanded] = useState(false)
   const [isChangesOpen, setIsChangesOpen] = useState(false)
   const changeStats = fileChanges.reduce(
     (acc, change) => ({
@@ -90,10 +96,33 @@ export function AssistantMessage({
     : t("chat.copyMessage")
   const trimmedModelName = modelName?.trim() ?? ""
 
+  // Per-call durations arrive keyed by the provider's tool-call id.
+  const toolStats = stats?.tools ?? []
+  const toolStatByCallId = new Map(
+    toolStats
+      .filter((tool) => tool.call_id)
+      .map((tool) => [tool.call_id, tool]),
+  )
+  function durationOf(
+    callId: string | undefined,
+    name: string,
+    index: number,
+  ): number | undefined {
+    const byId = callId ? toolStatByCallId.get(callId) : undefined
+    if (byId) {
+      return byId.duration_ms
+    }
+    // Older records only list tools in call order, with no ids to match on.
+    const unclaimed = toolStats.filter((tool) => !tool.call_id)
+    return unclaimed[index]?.name === name
+      ? unclaimed[index]?.duration_ms
+      : undefined
+  }
+
   return (
     <div className="group flex w-full flex-col gap-1.5">
       {!isCollapsedBlock && (
-          <div className="text-muted-foreground/60 flex items-center justify-between gap-2 px-1 text-xs opacity-70">
+        <div className="text-muted-foreground/60 flex items-center justify-between gap-2 px-1 text-xs opacity-70">
           <div className="flex items-center gap-2">
             <span>PicoClaw</span>
             {trimmedModelName && (
@@ -133,8 +162,15 @@ export function AssistantMessage({
                   <IconTool className="size-3.5" />
                 )}
                 <span>{collapsedLabel}</span>
+                {isToolCalls && hasToolCalls && (
+                  <span className="text-muted-foreground/45">
+                    {toolCalls.length}
+                  </span>
+                )}
                 {trimmedModelName && (
-                  <span className="text-muted-foreground/45">{trimmedModelName}</span>
+                  <span className="text-muted-foreground/45">
+                    {trimmedModelName}
+                  </span>
                 )}
               </div>
               <div className="flex items-center gap-2">
@@ -150,6 +186,41 @@ export function AssistantMessage({
               </div>
             </div>
           )}
+          {isToolCalls && !isExpanded && hasToolCalls && (
+            <div className="border-border/20 flex flex-col gap-1 border-t px-3 py-2">
+              {toolCalls.map((toolCall, index) => {
+                const name = toolCall.function?.name?.trim() ?? ""
+                const summary = summarizeToolArguments(
+                  toolCall.function?.arguments,
+                )
+                const durationMs = durationOf(toolCall.id, name, index)
+                if (!name && !summary) {
+                  return null
+                }
+                return (
+                  <div
+                    key={toolCall.id ?? `${name}-${index}`}
+                    className="flex min-w-0 items-baseline gap-2 font-mono text-[12px]"
+                  >
+                    <span className="text-foreground/80 shrink-0">
+                      {name || t("chat.toolCallFunctionLabel")}
+                    </span>
+                    {summary && (
+                      <span className="text-muted-foreground/70 min-w-0 truncate">
+                        {summary}
+                      </span>
+                    )}
+                    {durationMs !== undefined && (
+                      <span className="text-muted-foreground/50 ml-auto shrink-0 tabular-nums">
+                        {formatToolDuration(durationMs)}
+                      </span>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
           {(!isCollapsedBlock || isExpanded) && isToolCalls && hasToolCalls && (
             <div className="space-y-3 px-3 pt-0 pb-3">
               {toolCalls.map((toolCall, index) => {
@@ -214,7 +285,9 @@ export function AssistantMessage({
                             <MessageCodeBlock
                               code={toolArguments}
                               language="json"
-                              label={toolName || t("chat.toolCallArgumentsLabel")}
+                              label={
+                                toolName || t("chat.toolCallArgumentsLabel")
+                              }
                               className="my-0 shadow-none"
                               bodyClassName="px-3 py-2 text-[12px] leading-relaxed"
                             />
@@ -281,7 +354,7 @@ export function AssistantMessage({
       {!isCollapsedBlock && fileChanges.length > 0 && (
         <div className="mt-1 flex flex-col gap-1.5">
           <div
-            className="text-muted-foreground/60 hover:text-muted-foreground/80 flex cursor-pointer items-center justify-between rounded-xl border border-border/30 bg-muted/20 px-3 py-2 text-[12px] font-medium transition-colors select-none"
+            className="text-muted-foreground/60 hover:text-muted-foreground/80 border-border/30 bg-muted/20 flex cursor-pointer items-center justify-between rounded-xl border px-3 py-2 text-[12px] font-medium transition-colors select-none"
             onClick={() => setIsChangesOpen(!isChangesOpen)}
           >
             <div className="flex items-center gap-1.5">

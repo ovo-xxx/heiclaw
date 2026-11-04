@@ -3,6 +3,7 @@ import {
   type ClipboardEvent as ReactClipboardEvent,
   type DragEvent as ReactDragEvent,
   type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
   useRef,
 } from "react"
 import { useTranslation } from "react-i18next"
@@ -42,6 +43,8 @@ interface ChatComposerProps {
   canSend: boolean
   isDragActive: boolean
   contextUsage?: ContextUsage
+  /** Model picker lives in the composer, next to where the message is typed. */
+  modelSelector?: ReactNode
   /** Terminal dock (or any panel) sits directly below: drop the bottom gap. */
   flushBottom?: boolean
 }
@@ -63,6 +66,7 @@ export function ChatComposer({
   canSend,
   isDragActive,
   contextUsage,
+  modelSelector,
   flushBottom,
 }: ChatComposerProps) {
   const { t } = useTranslation()
@@ -170,12 +174,12 @@ export function ChatComposer({
           />
 
           <div className="mt-2 flex items-center justify-between px-1">
-            <div className="flex items-center gap-1">
+            <div className="flex min-w-0 items-center gap-1">
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="text-muted-foreground hover:text-foreground h-8 w-8 rounded-full"
+                className="text-muted-foreground hover:text-foreground h-8 w-8 shrink-0 rounded-full"
                 onClick={onAddImages}
                 disabled={!canInput}
                 aria-label={t("chat.attachImage")}
@@ -183,6 +187,7 @@ export function ChatComposer({
               >
                 <IconPhotoPlus className="size-4" />
               </Button>
+              {modelSelector}
             </div>
 
             <div className="flex items-center gap-1.5">

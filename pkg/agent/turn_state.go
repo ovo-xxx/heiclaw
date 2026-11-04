@@ -523,6 +523,7 @@ func (ts *turnState) recordToolExecution(
 	errorSummary string,
 	skillNames []string,
 	durationMS int64,
+	callID string,
 ) {
 	tool = strings.TrimSpace(tool)
 	if tool == "" {
@@ -539,6 +540,7 @@ func (ts *turnState) recordToolExecution(
 		ErrorSummary: strings.TrimSpace(errorSummary),
 		SkillNames:   append([]string(nil), skillNames...),
 		DurationMS:   durationMS,
+		CallID:       strings.TrimSpace(callID),
 	})
 }
 
@@ -1055,6 +1057,7 @@ func (ts *turnState) GetTurnStats(contextUsage *bus.ContextUsage) *providers.Tur
 				Name:       exec.Name,
 				OK:         exec.Success,
 				DurationMS: exec.DurationMS,
+				CallID:     exec.CallID,
 			})
 		}
 		stats.Tools = tools

@@ -302,20 +302,7 @@ export function ChatPage() {
         className={`transition-shadow ${
           hasScrolled ? "shadow-xs" : "shadow-none"
         }`}
-        titleExtra={
-          hasAvailableModels && (
-            <ModelSelector
-              value={sessionModelPin ?? FOLLOW_DEFAULT_MODEL}
-              defaultModelName={defaultModelName}
-              apiKeyModels={apiKeyModels}
-              oauthModels={oauthModels}
-              localModels={localModels}
-              onValueChange={(next) =>
-                setSessionModelPin(next === FOLLOW_DEFAULT_MODEL ? null : next)
-              }
-            />
-          )
-        }
+        titleExtra={null}
       >
         <div className="border-border/60 hidden items-center gap-2 rounded-lg border px-3 py-1.5 sm:flex">
           <span className="text-muted-foreground text-sm">
@@ -465,6 +452,21 @@ export function ChatPage() {
         isDragActive={isDragActive}
         contextUsage={contextUsage}
         flushBottom={terminalOpen}
+        modelSelector={
+          hasAvailableModels ? (
+            <ModelSelector
+              value={sessionModelPin ?? FOLLOW_DEFAULT_MODEL}
+              defaultModelName={defaultModelName}
+              apiKeyModels={apiKeyModels}
+              oauthModels={oauthModels}
+              localModels={localModels}
+              disabled={!canInput}
+              onValueChange={(next) =>
+                setSessionModelPin(next === FOLLOW_DEFAULT_MODEL ? null : next)
+              }
+            />
+          ) : undefined
+        }
       />
 
       <TerminalDock />

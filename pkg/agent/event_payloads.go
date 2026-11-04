@@ -40,6 +40,9 @@ type ToolExecutionRecord struct {
 	// used to exist only in the runtime ToolExecEnd event and never reached the
 	// turn record.
 	DurationMS int64 `json:"duration_ms,omitempty"`
+	// CallID is the provider-assigned id of this tool call, so per-call stats can
+	// be matched back to the call the panel renders.
+	CallID string `json:"call_id,omitempty"`
 }
 
 // TurnEndPayload describes the completion of a turn.

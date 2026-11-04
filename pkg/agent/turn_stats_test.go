@@ -1,6 +1,8 @@
 package agent
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -43,7 +45,7 @@ func TestTurnStatsTwoCallsOneTool(t *testing.T) {
 		RetryAttempt:    2,
 		FallbackAttempt: 1,
 	})
-	ts.recordToolExecution("edit_file", true, "", nil, 42)
+	ts.recordToolExecution("edit_file", true, "", nil, 42, "call_edit_1")
 	ts.RecordStreamChunkTiming(time.Now().Add(-100 * time.Millisecond))
 
 	usage := ts.GetTurnUsage()
@@ -105,8 +107,18 @@ func TestTurnStatsTwoCallsOneTool(t *testing.T) {
 	}
 
 	if len(stats.Tools) != 1 || stats.Tools[0].Name != "edit_file" || !stats.Tools[0].OK ||
-		stats.Tools[0].DurationMS != 42 {
-		t.Fatalf("tools = %+v, want edit_file ok 42ms", stats.Tools)
+		stats.Tools[0].DurationMS != 42 || stats.Tools[0].CallID != "call_edit_1" {
+		t.Fatalf("tools = %+v, want edit_file ok 42ms call_edit_1", stats.Tools)
+	}
+	// The panel pairs a duration with the call it belongs to through this wire
+	// key, and both chat paths read the same JSON. Renaming it would drop every
+	// per-call duration without failing a type check, so pin the name.
+	encoded, err := json.Marshal(stats)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if !strings.Contains(string(encoded), `"call_id":"call_edit_1"`) {
+		t.Fatalf("turn_stats JSON lost the call_id key: %s", encoded)
 	}
 	if stats.ContextUsage == nil || stats.ContextUsage.UsedTokens != 48000 ||
 		stats.ContextUsage.CompressAtTokens != 192000 {
@@ -126,8 +138,8 @@ func TestTurnStatsTwoCallsOneTool(t *testing.T) {
 // events use.
 func TestRecordToolExecutionKeepsDuration(t *testing.T) {
 	ts := &turnState{}
-	ts.recordToolExecution("message", true, "", nil, 7)
-	ts.recordToolExecution("read_file", false, "boom", nil, 1200)
+	ts.recordToolExecution("message", true, "", nil, 7, "")
+	ts.recordToolExecution("read_file", false, "boom", nil, 1200, "")
 
 	records := ts.toolExecutionsSnapshot()
 	if len(records) != 2 || records[0].DurationMS != 7 || records[1].DurationMS != 1200 {
@@ -149,7 +161,7 @@ func TestTurnStatsCapsPerCallListAndCountsDrops(t *testing.T) {
 		})
 	}
 	for i := 0; i < maxRecordedToolStats+3; i++ {
-		ts.recordToolExecution("bash", true, "", nil, 1)
+		ts.recordToolExecution("bash", true, "", nil, 1, "")
 	}
 
 	stats := ts.GetTurnStats(nil)

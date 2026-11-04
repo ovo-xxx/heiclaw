@@ -324,6 +324,7 @@ toolLoop:
 						toolErrorSummary(hookResult),
 						inferSkillNamesFromToolCall(ts, toolName, toolArgs),
 						toolDuration.Milliseconds(),
+						tc.ID,
 					)
 
 					messages = append(messages, toolResultMsg)
@@ -718,6 +719,7 @@ toolLoop:
 			toolErrorSummary(toolResult),
 			inferSkillNamesFromToolCall(ts, toolName, toolArgs),
 			toolDuration.Milliseconds(),
+			tc.ID,
 		)
 		messages = append(messages, toolResultMsg)
 		if !ts.opts.NoHistory {

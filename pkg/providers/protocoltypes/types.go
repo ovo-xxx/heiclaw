@@ -155,6 +155,9 @@ type ToolStat struct {
 	Name       string `json:"name"`
 	OK         bool   `json:"ok"`
 	DurationMS int64  `json:"duration_ms"`
+	// CallID matches this stat to one tool call in the message, so the panel can
+	// print a per-call duration even when the same tool runs several times.
+	CallID string `json:"call_id,omitempty"`
 }
 
 // TurnContextUsage mirrors bus.ContextUsage with the same JSON names the live

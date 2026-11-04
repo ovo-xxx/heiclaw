@@ -47,6 +47,7 @@ export interface TurnToolStat {
   name: string
   ok: boolean
   duration_ms: number
+  call_id?: string
 }
 
 export interface TurnContextUsage {

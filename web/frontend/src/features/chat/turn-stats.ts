@@ -156,6 +156,7 @@ function parseToolStats(raw: unknown): TurnToolStat[] | undefined {
     }
     tools.push({
       name,
+      call_id: toText(obj.call_id),
       ok: obj.ok !== false,
       duration_ms: toNumber(obj.duration_ms),
     })
