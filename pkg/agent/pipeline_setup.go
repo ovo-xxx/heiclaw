@@ -161,6 +161,7 @@ func (p *Pipeline) SetupTurn(ctx context.Context, ts *turnState) (*turnExecution
 	exec.usedLight = usedLight
 
 	p.applySessionModelOverride(ts, exec)
+	p.applyThinkingOverride(ts, exec)
 
 	return exec, nil
 }

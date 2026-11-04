@@ -46,12 +46,15 @@ type modelResponse struct {
 	Proxy      string `json:"proxy,omitempty"`
 	AuthMethod string `json:"auth_method,omitempty"`
 	// Advanced fields
-	ConnectMode         string                      `json:"connect_mode,omitempty"`
-	Workspace           string                      `json:"workspace,omitempty"`
-	RPM                 int                         `json:"rpm,omitempty"`
-	MaxTokensField      string                      `json:"max_tokens_field,omitempty"`
-	RequestTimeout      int                         `json:"request_timeout,omitempty"`
-	ThinkingLevel       string                      `json:"thinking_level,omitempty"`
+	ConnectMode    string `json:"connect_mode,omitempty"`
+	Workspace      string `json:"workspace,omitempty"`
+	RPM            int    `json:"rpm,omitempty"`
+	MaxTokensField string `json:"max_tokens_field,omitempty"`
+	RequestTimeout int    `json:"request_timeout,omitempty"`
+	ThinkingLevel  string `json:"thinking_level,omitempty"`
+	// SupportsThinking says whether the provider behind this entry would honour a
+	// thinking effort at all; the composer only offers the control when it is true.
+	SupportsThinking    bool                        `json:"supports_thinking,omitempty"`
 	ToolSchemaTransform string                      `json:"tool_schema_transform,omitempty"`
 	Streaming           config.ModelStreamingConfig `json:"streaming,omitempty"`
 	ExtraBody           map[string]any              `json:"extra_body,omitempty"`
@@ -632,6 +635,7 @@ func (h *Handler) handleListModels(w http.ResponseWriter, r *http.Request) {
 			MaxTokensField:      m.MaxTokensField,
 			RequestTimeout:      m.RequestTimeout,
 			ThinkingLevel:       m.ThinkingLevel,
+			SupportsThinking:    providers.SupportsThinkingForModel(m),
 			ToolSchemaTransform: m.ToolSchemaTransform,
 			Streaming:           m.Streaming,
 			ExtraBody:           m.ExtraBody,

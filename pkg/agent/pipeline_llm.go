@@ -251,6 +251,11 @@ func (p *Pipeline) CallLLM(
 				p.Cfg.Agents.Defaults.Provider,
 			)
 			candidateThinking := thinkingSettingsFromModelConfig(candidateCfg)
+			if exec.thinkingOverride.configured {
+				// The panel's choice for this message outranks each candidate's own
+				// setting; whether the candidate can honour it is the provider's call.
+				candidateThinking = exec.thinkingOverride
+			}
 			applyThinkingOption(callOpts, candidateProvider, candidateThinking, true, ts.agent.ID)
 			exec.suppressReasoning = shouldSuppressReasoningFor(candidateThinking)
 			return candidateProvider.Chat(ctx, messagesForCall, candidateTools, candidate.Model, callOpts)

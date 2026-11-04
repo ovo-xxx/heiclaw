@@ -1269,6 +1269,13 @@ func (c *PicoChannel) handleMessageSend(pc *picoConn, msg PicoMessage) {
 		metadata["model_override"] = strings.TrimSpace(model)
 	}
 
+	// Same for the thinking effort chosen in the composer: present means the panel
+	// stated one, absent means the model entry's own level stands.
+	if raw, stated := msg.Payload[PayloadKeyThinkingLevel]; stated {
+		level, _ := raw.(string)
+		metadata["thinking_override"] = strings.TrimSpace(level)
+	}
+
 	logger.DebugCF("pico", "Received message", map[string]any{
 		"session_id": sessionID,
 		"preview":    truncate(content, 50),

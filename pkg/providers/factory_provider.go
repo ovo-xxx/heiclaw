@@ -385,6 +385,22 @@ func isEmptyAPIKeyAllowed(protocol string) bool {
 	return ok && option.EmptyAPIKeyAllowed
 }
 
+// SupportsThinkingForModel reports whether the provider this model entry would use
+// accepts thinking parameters. It asks the provider itself rather than repeating
+// its rules, so the panel can offer the thinking control only where the call would
+// actually honour it. An entry that cannot build a provider supports nothing.
+func SupportsThinkingForModel(cfg *config.ModelConfig) bool {
+	if cfg == nil {
+		return false
+	}
+	provider, _, err := CreateProviderFromConfig(cfg)
+	if err != nil || provider == nil {
+		return false
+	}
+	capable, ok := provider.(ThinkingCapable)
+	return ok && capable.SupportsThinking()
+}
+
 // IsEmptyAPIKeyAllowedForProtocol reports whether a protocol allows requests
 // without api_key when using its default local endpoint.
 func IsEmptyAPIKeyAllowedForProtocol(protocol string) bool {

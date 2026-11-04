@@ -28,9 +28,12 @@ const (
 	PayloadKeyPlaceholder = "placeholder"
 	PayloadKeyToolCalls   = "tool_calls"
 	PayloadKeyModelName   = "model_name"
-	PayloadKeyUsage       = "usage"
-	PayloadKeyFileChanges = "file_changes"
-	PayloadKeyTurnStats   = "turn_stats"
+	// PayloadKeyThinkingLevel is the composer's thinking-effort choice, sent with
+	// the message so the turn can price and run it without a session round trip.
+	PayloadKeyThinkingLevel = "thinking_level"
+	PayloadKeyUsage         = "usage"
+	PayloadKeyFileChanges   = "file_changes"
+	PayloadKeyTurnStats     = "turn_stats"
 
 	MessageKindThought   = "thought"
 	MessageKindToolCalls = "tool_calls"

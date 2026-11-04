@@ -81,6 +81,30 @@ func activeThinkingSettings(agent *AgentInstance, modelCfg *config.ModelConfig) 
 	return thinkingSettings{}
 }
 
+// thinkingSettingsFromOverride turns the panel's per-message choice into settings.
+// A value outside the known levels yields nothing, so a stale or mistyped choice
+// cannot silently switch thinking off.
+func thinkingSettingsFromOverride(level string) thinkingSettings {
+	if !isConfiguredThinkingLevel(level) {
+		return thinkingSettings{}
+	}
+	return thinkingSettings{level: parseThinkingLevel(level), configured: true}
+}
+
+// effectiveThinkingSettings is the one order the whole turn respects: the panel's
+// choice for this message, then the model entry's own thinking_level, then the
+// agent default.
+func effectiveThinkingSettings(
+	agent *AgentInstance,
+	modelCfg *config.ModelConfig,
+	override thinkingSettings,
+) thinkingSettings {
+	if override.configured {
+		return override
+	}
+	return activeThinkingSettings(agent, modelCfg)
+}
+
 func applyThinkingOption(
 	opts map[string]any,
 	provider providers.LLMProvider,
@@ -105,6 +129,16 @@ func applyThinkingOption(
 	}
 }
 
+// applyThinkingOverride records the panel's per-message thinking choice on the
+// turn, so every later call - including fallback candidates - reads it from one
+// place instead of re-deriving it.
+func (p *Pipeline) applyThinkingOverride(ts *turnState, exec *turnExecution) {
+	if p == nil || ts == nil || exec == nil || !ts.opts.ThinkingOverrideSet {
+		return
+	}
+	exec.thinkingOverride = thinkingSettingsFromOverride(ts.opts.ThinkingOverride)
+}
+
 func applyTurnThinkingOptions(
 	exec *turnExecution,
 	agent *AgentInstance,
@@ -115,7 +149,7 @@ func applyTurnThinkingOptions(
 		return
 	}
 	delete(exec.llmOpts, "thinking_level")
-	settings := activeThinkingSettings(agent, exec.activeModelConfig)
+	settings := effectiveThinkingSettings(agent, exec.activeModelConfig, exec.thinkingOverride)
 	agentID := ""
 	if agent != nil {
 		agentID = agent.ID

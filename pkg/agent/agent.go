@@ -97,21 +97,26 @@ type processOptions struct {
 	UserMessage             string          // User message content (may include prefix)
 	ForcedSkills            []string        // Skills explicitly requested for this message
 	TurnProfile             config.EffectiveTurnProfile
-	SystemPromptOverride    string                 // Override the default system prompt (Used by SubTurns)
-	Media                   []string               // media:// refs from inbound message
-	InitialSteeringMessages []providers.Message    // Steering messages from refactor/agent
-	DefaultResponse         string                 // Response when LLM returns empty
-	EnableSummary           bool                   // Whether to trigger summarization
-	SendResponse            bool                   // Whether to send response via bus
-	AllowInterimPicoPublish bool                   // Whether pico tool-call interim text can be published when SendResponse is false
-	SuppressToolFeedback    bool                   // Whether to suppress inline tool feedback messages
-	NoHistory               bool                   // If true, don't load session history (for heartbeat)
-	SkipInitialSteeringPoll bool                   // If true, skip the steering poll at loop start (used by Continue)
-	ModelOverride    string // Per-message model pin from the web panel; "" is a meaningful value
-	ModelOverrideSet bool   // True when the message carried the field at all: distinguishes "clear the pin" from "say nothing"
-	InboundContext          *bus.InboundContext    // Normalized inbound facts for events/hooks
-	RouteResult             *routing.ResolvedRoute // Route decision snapshot for events/hooks
-	SessionScope            *session.SessionScope  // Session scope snapshot for events/hooks
+	SystemPromptOverride    string              // Override the default system prompt (Used by SubTurns)
+	Media                   []string            // media:// refs from inbound message
+	InitialSteeringMessages []providers.Message // Steering messages from refactor/agent
+	DefaultResponse         string              // Response when LLM returns empty
+	EnableSummary           bool                // Whether to trigger summarization
+	SendResponse            bool                // Whether to send response via bus
+	AllowInterimPicoPublish bool                // Whether pico tool-call interim text can be published when SendResponse is false
+	SuppressToolFeedback    bool                // Whether to suppress inline tool feedback messages
+	NoHistory               bool                // If true, don't load session history (for heartbeat)
+	SkipInitialSteeringPoll bool                // If true, skip the steering poll at loop start (used by Continue)
+	ModelOverride           string              // Per-message model pin from the web panel; "" is a meaningful value
+	ModelOverrideSet        bool                // True when the message carried the field at all: distinguishes "clear the pin" from "say nothing"
+	// ThinkingOverride is the panel's per-message thinking effort. It wins over the
+	// model entry's own thinking_level for this turn; an unset or unrecognised value
+	// leaves the configured level in place.
+	ThinkingOverride    string
+	ThinkingOverrideSet bool
+	InboundContext      *bus.InboundContext    // Normalized inbound facts for events/hooks
+	RouteResult         *routing.ResolvedRoute // Route decision snapshot for events/hooks
+	SessionScope        *session.SessionScope  // Session scope snapshot for events/hooks
 }
 
 type continuationTarget struct {

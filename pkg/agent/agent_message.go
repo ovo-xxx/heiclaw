@@ -197,6 +197,10 @@ func (al *AgentLoop) processMessage(ctx context.Context, msg bus.InboundMessage)
 		opts.ModelOverride = strings.TrimSpace(raw)
 		opts.ModelOverrideSet = true
 	}
+	if raw, ok := msg.Context.Raw["thinking_override"]; ok {
+		opts.ThinkingOverride = strings.TrimSpace(raw)
+		opts.ThinkingOverrideSet = true
+	}
 
 	var err error
 	opts, err = resolveTurnProfileOptions(al.GetConfig(), opts)

@@ -229,6 +229,11 @@ type turnExecution struct {
 	// Phase tracking
 	phase LLMPhase
 
+	// thinkingOverride is the panel's per-message thinking choice, already parsed.
+	// Zero when the message said nothing, which leaves the model entry's level in
+	// charge for the whole turn, including fallback candidates.
+	thinkingOverride thinkingSettings
+
 	// Abort signaling for coordinator (set by Pipeline methods)
 	abortedByHardAbort bool // true when hard abort triggered during LLM/tools
 	abortedByHook      bool // true when HookActionAbortTurn triggered
