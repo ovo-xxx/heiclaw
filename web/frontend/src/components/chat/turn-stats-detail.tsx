@@ -121,116 +121,95 @@ function LLMCallRow({
   const model = call.model ?? ""
   const provider = call.provider ?? ""
   const rate = callOutputRate(call)
-  const hasBadges =
-    call.retry_attempt !== undefined ||
-    call.fallback_attempt !== undefined ||
-    call.streamed_fallback === true ||
-    call.cost !== undefined
-
   return (
-    <div className="border-border/20 border-t pt-1 first:border-t-0 first:pt-0">
-      <div className="flex min-w-0 items-baseline gap-1.5">
-        <span className="text-muted-foreground/50 shrink-0 font-mono text-[10px]">
-          #{call.index || position}
+    <div className="border-border/20 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 border-t pt-1 first:border-t-0 first:pt-0">
+      <span className="text-muted-foreground/50 shrink-0 font-mono text-[10px]">
+        #{call.index || position}
+      </span>
+      <span className="text-muted-foreground/85 shrink-0 text-[11px] font-medium">
+        {model || provider || t("chat.turnStats.unknownModel")}
+      </span>
+      {call.iteration !== undefined && (
+        <span className="text-muted-foreground/45 shrink-0 text-[10px]">
+          {t("chat.turnStats.callIteration", { n: call.iteration })}
         </span>
-        <span className="text-muted-foreground/85 min-w-0 truncate text-[11px] font-medium">
-          {model || provider || t("chat.turnStats.unknownModel")}
-        </span>
-        {model && provider && (
-          <span className="text-muted-foreground/45 shrink-0 text-[10px]">
-            {provider}
-          </span>
-        )}
-        {call.iteration !== undefined && (
-          <span className="text-muted-foreground/45 ml-auto shrink-0 text-[10px]">
-            {t("chat.turnStats.callIteration", { n: call.iteration })}
-          </span>
-        )}
-      </div>
-
-      <div className="mt-0.5 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-        <TokenCell
-          label={t("chat.turnStats.input")}
-          value={call.tokens.input_tokens}
-        />
-        <TokenCell
-          label={t("chat.turnStats.output")}
-          value={call.tokens.output_tokens}
-        />
-        <TokenCell
-          label={t("chat.turnStats.total")}
-          value={call.tokens.total_tokens}
-        />
+      )}
+      <TokenCell
+        label={t("chat.turnStats.input")}
+        value={call.tokens.input_tokens}
+      />
+      <TokenCell
+        label={t("chat.turnStats.output")}
+        value={call.tokens.output_tokens}
+      />
+      <TokenCell
+        label={t("chat.turnStats.total")}
+        value={call.tokens.total_tokens}
+      />
+      <StatCell
+        label={t("chat.turnStats.latency")}
+        value={formatDuration(call.latency_ms)}
+      />
+      {call.time_to_first_token_ms !== undefined && (
         <StatCell
-          label={t("chat.turnStats.latency")}
-          value={formatDuration(call.latency_ms)}
+          label={t("chat.turnStats.firstToken")}
+          value={formatDuration(call.time_to_first_token_ms)}
         />
-        {call.time_to_first_token_ms !== undefined && (
-          <StatCell
-            label={t("chat.turnStats.firstToken")}
-            value={formatDuration(call.time_to_first_token_ms)}
-          />
-        )}
-        {rate !== undefined && (
-          <StatCell
-            label={t("chat.turnStats.outputRate")}
-            value={formatTokenRate(rate)}
-            className="text-foreground/80"
-          />
-        )}
-        {call.finish_reason && (
-          <StatCell
-            label={t("chat.turnStats.finishReason")}
-            value={call.finish_reason}
-          />
-        )}
-        {call.tool_calls !== undefined && (
-          <StatCell
-            label={t("chat.turnStats.tools")}
-            value={String(call.tool_calls)}
-          />
-        )}
-        {call.content_chars !== undefined && (
-          <TokenCell
-            label={t("chat.turnStats.chars")}
-            value={call.content_chars}
-          />
-        )}
-        {call.cost && (
-          <StatCell
-            label={t("chat.turnStats.cost")}
-            value={formatCost(call.cost.currency, call.cost.amount)}
-            hint={<CostBreakdown cost={call.cost} tokens={call.tokens} />}
-            className="text-foreground/80"
-          />
-        )}
-      </div>
-
-      {hasBadges && (
-        <div className="mt-0.5 flex flex-wrap gap-1">
-          {call.cost && (
-            <BadgePill>
-              {t(
-                call.cost.peak
-                  ? "chat.turnStats.peakBand"
-                  : "chat.turnStats.offPeakBand",
-              )}
-            </BadgePill>
+      )}
+      {rate !== undefined && (
+        <StatCell
+          label={t("chat.turnStats.outputRate")}
+          value={formatTokenRate(rate)}
+          className="text-foreground/80"
+        />
+      )}
+      {call.finish_reason && (
+        <StatCell
+          label={t("chat.turnStats.finishReason")}
+          value={call.finish_reason}
+        />
+      )}
+      {call.tool_calls !== undefined && (
+        <StatCell
+          label={t("chat.turnStats.tools")}
+          value={String(call.tool_calls)}
+        />
+      )}
+      {call.content_chars !== undefined && (
+        <TokenCell
+          label={t("chat.turnStats.chars")}
+          value={call.content_chars}
+        />
+      )}
+      {call.cost && (
+        <StatCell
+          label={t("chat.turnStats.cost")}
+          value={formatCost(call.cost.currency, call.cost.amount)}
+          hint={<CostBreakdown cost={call.cost} tokens={call.tokens} />}
+          className="text-foreground/80"
+        />
+      )}
+      {call.cost && (
+        <BadgePill>
+          {t(
+            call.cost.peak
+              ? "chat.turnStats.peakBand"
+              : "chat.turnStats.offPeakBand",
           )}
-          {call.retry_attempt !== undefined && (
-            <BadgePill>
-              {t("chat.turnStats.retry", { n: call.retry_attempt })}
-            </BadgePill>
-          )}
-          {call.fallback_attempt !== undefined && (
-            <BadgePill>
-              {t("chat.turnStats.fallback", { n: call.fallback_attempt })}
-            </BadgePill>
-          )}
-          {call.streamed_fallback === true && (
-            <BadgePill>{t("chat.turnStats.streamFallback")}</BadgePill>
-          )}
-        </div>
+        </BadgePill>
+      )}
+      {call.retry_attempt !== undefined && (
+        <BadgePill>
+          {t("chat.turnStats.retry", { n: call.retry_attempt })}
+        </BadgePill>
+      )}
+      {call.fallback_attempt !== undefined && (
+        <BadgePill>
+          {t("chat.turnStats.fallback", { n: call.fallback_attempt })}
+        </BadgePill>
+      )}
+      {call.streamed_fallback === true && (
+        <BadgePill>{t("chat.turnStats.streamFallback")}</BadgePill>
       )}
     </div>
   )
@@ -239,7 +218,6 @@ function LLMCallRow({
 export function TurnStatsDetail({ stats, modelName }: TurnStatsDetailProps) {
   const { t } = useTranslation()
   const calls = stats.llm_calls ?? []
-  const tools = stats.tools ?? []
   const context = stats.context_usage
   const tokens = stats.tokens
   const turnRate = turnOutputRate(stats)
@@ -250,7 +228,7 @@ export function TurnStatsDetail({ stats, modelName }: TurnStatsDetailProps) {
   return (
     <div className="border-border/30 bg-muted/20 dark:bg-muted/10 flex flex-col gap-1 rounded-lg border px-2 py-1">
       {modelName && (
-        <div className="flex min-w-0 items-baseline justify-between gap-2">
+        <div className="flex min-w-0 items-baseline gap-2">
           <SectionTitle>{t("chat.turnStats.modelTitle")}</SectionTitle>
           <span className="text-muted-foreground/75 min-w-0 truncate font-mono text-[11px]">
             {modelName}
@@ -366,48 +344,9 @@ export function TurnStatsDetail({ stats, modelName }: TurnStatsDetailProps) {
         </div>
       )}
 
-      {tools.length > 0 && (
-        <div className="flex flex-col gap-0.5">
-          <SectionTitle>
-            {t("chat.turnStats.toolsTitle")}
-            <span className="text-muted-foreground/45">{tools.length}</span>
-          </SectionTitle>
-          {tools.map((tool, index) => (
-            <div
-              key={`${tool.name}-${index}`}
-              className="flex min-w-0 items-center gap-1.5"
-            >
-              <span
-                className={cn(
-                  "size-1.5 shrink-0 rounded-full",
-                  tool.ok ? "bg-emerald-500/70" : "bg-red-500/80",
-                )}
-              />
-              <span className="text-muted-foreground/85 min-w-0 flex-1 truncate font-mono text-[11px]">
-                {tool.name}
-              </span>
-              <span
-                className={cn(
-                  "shrink-0 text-[10px]",
-                  tool.ok
-                    ? "text-muted-foreground/50"
-                    : "text-red-500/80 dark:text-red-400/80",
-                )}
-              >
-                {tool.ok
-                  ? t("chat.turnStats.toolOk")
-                  : t("chat.turnStats.toolFailed")}
-              </span>
-              <span className="text-muted-foreground/60 w-12 shrink-0 text-right text-[11px] tabular-nums">
-                {formatDuration(tool.duration_ms)}
-              </span>
-            </div>
-          ))}
-          {droppedTools > 0 && (
-            <div className="text-muted-foreground/55 px-1 pt-0.5 text-[10px]">
-              {t("chat.turnStats.droppedTools", { count: droppedTools })}
-            </div>
-          )}
+      {droppedTools > 0 && (
+        <div className="text-muted-foreground/55 px-1 text-[10px]">
+          {t("chat.turnStats.droppedTools", { count: droppedTools })}
         </div>
       )}
 

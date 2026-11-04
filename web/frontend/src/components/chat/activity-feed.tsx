@@ -131,6 +131,11 @@ function ActivityRowLine({
             {row.summary}
           </span>
         )}
+        {row.ok === false && (
+          <span className="shrink-0 text-[11px] text-red-500/80 dark:text-red-400/80">
+            {t("chat.turnStats.toolFailed")}
+          </span>
+        )}
         {row.durationMs !== undefined && (
           <span className="text-muted-foreground/50 ml-auto shrink-0 tabular-nums">
             {formatToolDuration(row.durationMs)}
