@@ -1,7 +1,6 @@
 import type { ReactNode } from "react"
 import { Toaster } from "sonner"
 
-import { AppHeader } from "@/components/app-header"
 import { AppSidebar } from "@/components/app-sidebar"
 import { TourGuide } from "@/components/tour/tour-guide"
 import { SidebarProvider } from "@/components/ui/sidebar"
@@ -11,9 +10,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
   return (
     <TooltipProvider>
       <SidebarProvider className="flex h-dvh flex-col overflow-hidden">
-        {/* The categories sit in the header, right of the logo. */}
-        <AppHeader />
-
+        {/* No application header: every destination lives in the sidebar, and each
+            page draws its own title row (ChatGPT's layout, which is what the panel
+            now follows). */}
         <div className="flex min-h-0 flex-1 overflow-hidden">
           <AppSidebar />
           <div className="flex w-full flex-col overflow-hidden">

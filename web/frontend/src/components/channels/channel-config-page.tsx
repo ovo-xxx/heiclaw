@@ -1,4 +1,5 @@
 import { IconLoader2 } from "@tabler/icons-react"
+import { useNavigate } from "@tanstack/react-router"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 
@@ -32,8 +33,16 @@ import { WeixinForm } from "@/components/channels/channel-forms/weixin-form"
 import { ConfigChangeNotice } from "@/components/config-change-notice"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { useGateway } from "@/hooks/use-gateway"
+import { useSidebarChannels } from "@/hooks/use-sidebar-channels"
 import { showSaveSuccessOrRestartToast } from "@/lib/restart-required"
 import { refreshGatewayState } from "@/store/gateway"
 
@@ -290,6 +299,12 @@ const CHANNELS_WITHOUT_DOCS = new Set([
 export function ChannelConfigPage({ channelName }: ChannelConfigPageProps) {
   const { t, i18n } = useTranslation()
   const { state: gatewayState } = useGateway()
+  const navigate = useNavigate()
+  // The sidebar no longer lists every channel, so this page owns the switcher.
+  const { allChannelItems } = useSidebarChannels({
+    language: (i18n.resolvedLanguage ?? i18n.language ?? "").toLowerCase(),
+    t,
+  })
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -688,19 +703,40 @@ export function ChannelConfigPage({ channelName }: ChannelConfigPageProps) {
   return (
     <div className="flex h-full flex-col">
       <PageHeader
-        title={channelDisplayName}
+        title={t("navigation.channels_group")}
         titleExtra={
-          channel &&
-          docsUrl && (
-            <a
-              href={docsUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="text-muted-foreground hover:text-foreground text-xs underline underline-offset-2"
+          <div className="flex items-center gap-3">
+            <Select
+              value={channelName}
+              onValueChange={(name) =>
+                navigate({ to: "/channels/$name", params: { name } })
+              }
             >
-              {t("channels.page.docLink")}
-            </a>
-          )
+              <SelectTrigger
+                className="h-8 w-40 text-xs"
+                aria-label={t("navigation.channels_group")}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {allChannelItems.map((item) => (
+                  <SelectItem key={item.key} value={item.key}>
+                    {item.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {channel && docsUrl && (
+              <a
+                href={docsUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-muted-foreground hover:text-foreground hidden text-xs underline underline-offset-2 sm:inline"
+              >
+                {t("channels.page.docLink")}
+              </a>
+            )}
+          </div>
         }
       />
 

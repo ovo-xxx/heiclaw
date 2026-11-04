@@ -15,6 +15,10 @@
     "config": "Config",
     "logs": "Logs",
     "terminal": "Terminal",
+    "settings": "Settings",
+    "language": "Language",
+    "themeToLight": "Switch to light theme",
+    "themeToDark": "Switch to dark theme",
     "sections": "Sections"
   },
   "launcherLogin": {
@@ -1094,14 +1098,6 @@
     "models": {
       "title": "Configure Models",
       "description": "Click Models at the top to add an API key for your provider. Only a configured model can be used in chat."
-    },
-    "gateway": {
-      "title": "Start Gateway",
-      "description": "After configuring models, click the \"Start Gateway\" button at the top to begin chatting with AI."
-    },
-    "docs": {
-      "title": "View Documentation",
-      "description": "Need more help? Click the documentation button in the top right corner to view detailed guides and configuration docs."
     }
   }
 }

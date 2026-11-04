@@ -1,158 +1,228 @@
-import { IconChevronsDown, IconChevronsUp } from "@tabler/icons-react"
+import {
+  IconAtom,
+  IconBroadcast,
+  IconChevronUp,
+  IconKey,
+  IconLanguage,
+  IconListDetails,
+  IconLogout,
+  IconMessages,
+  IconMoon,
+  IconRobot,
+  IconSettings,
+  IconSun,
+  IconTerminal2,
+} from "@tabler/icons-react"
 import { Link, useRouterState } from "@tanstack/react-router"
-import type { ComponentProps } from "react"
+import * as React from "react"
 import { useTranslation } from "react-i18next"
 
+import { postLauncherDashboardLogout } from "@/api/launcher-auth"
 import { ConversationList } from "@/components/chat/conversation-list"
+import { Sidebar, SidebarRail, useSidebar } from "@/components/ui/sidebar"
 import {
-  Sidebar,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarRail,
-  useSidebar,
-} from "@/components/ui/sidebar"
-import { useSidebarChannels } from "@/hooks/use-sidebar-channels"
-import {
-  type NavSubItem,
-  buildCategories,
-  categoryForPath,
-} from "@/lib/nav-categories"
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { useGateway } from "@/hooks/use-gateway"
+import { useTheme } from "@/hooks/use-theme"
+import { categoryForPath } from "@/lib/nav-categories"
 import { cn } from "@/lib/utils"
 
-// Second level of the navigation: the pages of whichever category the top bar holds
-// active. 对话 has no pages of its own - the conversation list is its second level.
-export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
-  const { t, i18n } = useTranslation()
+// ChatGPT-shaped sidebar: a few destinations at the top with no second level of their
+// own, every conversation in the middle, and one settings menu at the bottom holding
+// the pages that do not earn a permanent row (credentials, config, logs, terminal).
+
+const primaryNav = [
+  { key: "chat", labelKey: "navigation.chat", url: "/", icon: IconMessages },
+  { key: "model", labelKey: "navigation.model_group", url: "/models", icon: IconAtom },
+  {
+    key: "channels",
+    labelKey: "navigation.channels_group",
+    url: "/channels",
+    icon: IconBroadcast,
+  },
+  {
+    key: "agent",
+    labelKey: "navigation.agent_group",
+    url: "/agent/hub",
+    icon: IconRobot,
+  },
+] as const
+
+const secondaryLinks = [
+  { labelKey: "navigation.credentials", url: "/credentials", icon: IconKey },
+  { labelKey: "navigation.config", url: "/config", icon: IconSettings },
+  { labelKey: "navigation.logs", url: "/logs", icon: IconListDetails },
+  { labelKey: "navigation.terminal", url: "/terminal", icon: IconTerminal2 },
+] as const
+
+export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
+  const { t } = useTranslation()
   const { isMobile, setOpenMobile } = useSidebar()
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   })
-  const {
-    channelItems,
-    hasMoreChannels,
-    showAllChannels,
-    toggleShowAllChannels,
-  } = useSidebarChannels({
-    language: (i18n.resolvedLanguage ?? i18n.language ?? "").toLowerCase(),
-    t,
-  })
+  const activeCategory = categoryForPath(pathname)
 
-  const categories = buildCategories(
-    channelItems.map<NavSubItem>((item) => ({
-      title: item.title,
-      url: item.url,
-      icon: item.icon,
-      translateTitle: false,
-    })),
-  )
-  const active = categories.find(
-    (category) => category.key === categoryForPath(pathname),
-  )
-  const showPages = active !== undefined && active.items.length > 0
+  const closeDrawer = React.useCallback(() => {
+    if (isMobile) {
+      setOpenMobile(false)
+    }
+  }, [isMobile, setOpenMobile])
 
   return (
     <Sidebar
       {...props}
       className="bg-background border-r-border/20 border-r pt-3"
     >
-      {active?.key === "chat" && <ConversationList />}
+      <div className="flex shrink-0 flex-col gap-1 px-2 pb-1 pt-[max(0.75rem,env(safe-area-inset-top))] sm:pt-0">
+        <div className="mb-1 flex h-8 shrink-0 items-center px-2">
+          <Link to="/" onClick={closeDrawer} aria-label="PicoClaw">
+            <img className="h-5" src="/logo_with_text.png" alt="PicoClaw" />
+          </Link>
+        </div>
+        {primaryNav.map((item) => {
+          const Icon = item.icon
+          const isActive = activeCategory === item.key
+          return (
+            <Link
+              key={item.key}
+              to={item.url}
+              onClick={closeDrawer}
+              aria-current={isActive ? "page" : undefined}
+              data-tour={item.key === "model" ? "models-nav" : undefined}
+              className={cn(
+                // 36px rows with a 20px icon, the geometry the ChatGPT sidebar uses.
+                "flex h-9 items-center gap-3 rounded-[10px] px-2.5 text-sm transition-colors",
+                isActive
+                  ? "bg-accent text-accent-foreground font-medium"
+                  : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+              )}
+            >
+              <Icon
+                className={cn("size-5", isActive ? "opacity-100" : "opacity-60")}
+              />
+              <span className="truncate">{t(item.labelKey)}</span>
+            </Link>
+          )
+        })}
+      </div>
 
-      {showPages && (
-        <>
-          {/* A single hairline divider: flush to the sidebar content box on both
-              sides (w-full inside sidebar-inner, which sits left of the border-r),
-              no horizontal inset, no extra vertical gap, no label. */}
-          <div aria-hidden className="bg-border/60 h-px w-full shrink-0" />
-          <div className="shrink-0 overflow-y-auto px-2 py-2">
-            <SidebarGroup className="px-1 py-0">
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {active.items.map((item) => (
-                    <NavRow
-                      key={item.url}
-                      item={item}
-                      pathname={pathname}
-                      label={
-                        item.translateTitle === false
-                          ? item.title
-                          : t(item.title)
-                      }
-                      onNavigate={() => {
-                        if (isMobile) {
-                          setOpenMobile(false)
-                        }
-                      }}
-                    />
-                  ))}
-                  {active.key === "channels" && hasMoreChannels && (
-                    <SidebarMenuItem>
-                      <SidebarMenuButton
-                        onClick={toggleShowAllChannels}
-                        className="text-muted-foreground hover:bg-muted/60 h-9 px-3"
-                      >
-                        {showAllChannels ? (
-                          <IconChevronsUp className="size-4 opacity-60" />
-                        ) : (
-                          <IconChevronsDown className="size-4 opacity-60" />
-                        )}
-                        <span className="opacity-80">
-                          {showAllChannels
-                            ? t("navigation.show_less_channels")
-                            : t("navigation.show_more_channels")}
-                        </span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  )}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </div>
-        </>
-      )}
+      <div aria-hidden className="bg-border/60 mx-3 h-px shrink-0" />
+
+      <ConversationList />
+
+      <div className="border-border/60 shrink-0 border-t px-2 py-2">
+        <SettingsMenu />
+      </div>
       <SidebarRail />
     </Sidebar>
   )
 }
 
-function NavRow({
-  item,
-  pathname,
-  label,
-  onNavigate,
-}: {
-  item: NavSubItem
-  pathname: string
-  label: string
-  onNavigate: () => void
-}) {
-  const isActive = pathname === item.url || pathname.startsWith(`${item.url}/`)
-  const Icon = item.icon
+function SettingsMenu() {
+  const { i18n, t } = useTranslation()
+  const { theme, toggleTheme } = useTheme()
+  const { restartRequired, restart, canStart, loading } = useGateway()
+
+  const handleLogout = async () => {
+    const result = await postLauncherDashboardLogout()
+    // With a forward-auth gate in front (PICOCLAW_LOGOUT_URL) hand off to it so the
+    // gate session ends too; otherwise fall back to the local login page.
+    globalThis.location.assign(result.logoutUrl || "/launcher-login")
+  }
+
+  const languages = [
+    { code: "en", label: "English" },
+    { code: "zh", label: "简体中文" },
+    { code: "pt-BR", label: "Português (Brasil)" },
+    { code: "bn-IN", label: "বাংলা" },
+    { code: "cs", label: "Čeština" },
+  ]
 
   return (
-    <SidebarMenuItem>
-      <SidebarMenuButton
-        asChild
-        isActive={isActive}
-        onClick={onNavigate}
-        className={cn(
-          "h-9 px-3",
-          isActive
-            ? "bg-accent/80 text-foreground font-medium"
-            : "text-muted-foreground hover:bg-muted/60",
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          data-tour="settings-menu"
+          aria-label={t("navigation.settings")}
+          className="text-muted-foreground hover:bg-accent/60 hover:text-foreground flex h-9 w-full items-center gap-3 rounded-[10px] px-2.5 text-sm transition-colors"
+        >
+          <IconSettings className="size-5 opacity-60" />
+          <span className="truncate">{t("navigation.settings")}</span>
+          <IconChevronUp className="ms-auto size-3.5 opacity-50" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" side="top" className="w-52">
+        {secondaryLinks.map((item) => {
+          const Icon = item.icon
+          return (
+            <DropdownMenuItem key={item.url} asChild>
+              <Link to={item.url}>
+                <Icon className="size-4 opacity-70" />
+                {t(item.labelKey)}
+              </Link>
+            </DropdownMenuItem>
+          )
+        })}
+        <DropdownMenuSeparator />
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <IconLanguage className="size-4 opacity-70" />
+            {languages.find((l) =>
+              (i18n.resolvedLanguage ?? i18n.language ?? "").startsWith(
+                l.code.slice(0, 2),
+              ),
+            )?.label ?? t("navigation.language")}
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent>
+            {languages.map((language) => (
+              <DropdownMenuItem
+                key={language.code}
+                onClick={() => void i18n.changeLanguage(language.code)}
+              >
+                {language.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+        <DropdownMenuItem onClick={toggleTheme}>
+          {theme === "dark" ? (
+            <IconSun className="size-4 opacity-70" />
+          ) : (
+            <IconMoon className="size-4 opacity-70" />
+          )}
+          {t(
+            theme === "dark"
+              ? "navigation.themeToLight"
+              : "navigation.themeToDark",
+          )}
+        </DropdownMenuItem>
+        {restartRequired && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              disabled={loading || !canStart}
+              onClick={() => void restart()}
+            >
+              {t("header.gateway.action.restart")}
+            </DropdownMenuItem>
+          </>
         )}
-      >
-        <Link to={item.url}>
-          <Icon
-            className={cn("size-4", isActive ? "opacity-100" : "opacity-60")}
-          />
-          <span className={isActive ? "opacity-100" : "opacity-80"}>
-            {label}
-          </span>
-        </Link>
-      </SidebarMenuButton>
-    </SidebarMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => void handleLogout()}>
+          <IconLogout className="size-4 opacity-70" />
+          {t("header.logout.tooltip")}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }

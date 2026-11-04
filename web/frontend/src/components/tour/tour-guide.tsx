@@ -1,5 +1,4 @@
 import {
-  IconBook,
   IconChevronLeft,
   IconChevronRight,
 } from "@tabler/icons-react"
@@ -48,21 +47,6 @@ export function TourGuide() {
       targetSelector: "[data-tour='models-nav']",
       position: "bottom",
     },
-    gateway: {
-      title: t("tour.gateway.title"),
-      description: t("tour.gateway.description"),
-      targetSelector: "[data-tour='gateway-button']",
-      position: "left",
-      offsetY: 60,
-    },
-    docs: {
-      title: t("tour.docs.title"),
-      description: t("tour.docs.description"),
-      targetSelector: "[data-tour='docs-button']",
-      position: "left",
-      icon: <IconBook className="size-4" />,
-      offsetY: 60,
-    },
     completed: {
       title: "",
       description: "",
@@ -71,13 +55,7 @@ export function TourGuide() {
   }
 
   const currentConfig = steps[tourState.currentStep]
-  const stepOrder: TourStep[] = [
-    "welcome",
-    "models",
-    "gateway",
-    "docs",
-    "completed",
-  ]
+  const stepOrder: TourStep[] = ["welcome", "models", "completed"]
   const currentStepIndex = stepOrder.indexOf(tourState.currentStep)
   const totalSteps = stepOrder.length - 1
 

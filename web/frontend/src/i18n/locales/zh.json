@@ -15,6 +15,10 @@
     "config": "配置",
     "logs": "日志",
     "terminal": "终端",
+    "settings": "设置",
+    "language": "语言",
+    "themeToLight": "切换到浅色主题",
+    "themeToDark": "切换到深色主题",
     "sections": "分区"
   },
   "launcherLogin": {
@@ -1094,14 +1098,6 @@
     "models": {
       "title": "配置模型",
       "description": "点击顶部「模型」，为 AI 服务商配置 API Key。只有配置好的模型才能用于对话。"
-    },
-    "gateway": {
-      "title": "启动服务",
-      "description": "配置好模型后，点击顶部的「启动服务」按钮，即可开始与 AI 对话。"
-    },
-    "docs": {
-      "title": "查看文档",
-      "description": "需要更多帮助？点击右上角的文档按钮，查看详细的使用文档和配置指南。"
     }
   }
 }

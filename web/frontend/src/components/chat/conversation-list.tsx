@@ -145,9 +145,7 @@ export function ConversationList() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {/* The mobile drawer puts this list against the very top edge, under the status
-          bar on a phone, so it needs its own inset; the desktop sidebar already pads. */}
-      <SidebarHeader className="gap-2 px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-2 sm:pt-0">
+      <SidebarHeader className="gap-2 px-3 pt-2 pb-2">
         <Button
           size="sm"
           onClick={handleNewChat}

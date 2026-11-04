@@ -228,12 +228,25 @@ export function useSidebarChannels({ language, t }: UseSidebarChannelsOptions) {
     [t, visibleChannels],
   )
 
+  // The channel page's own switcher needs every channel, not the truncated rail list.
+  const allChannelItems = React.useMemo<SidebarChannelNavItem[]>(
+    () =>
+      sortedChannels.map((channel) => ({
+        key: channel.name,
+        title: getChannelDisplayName(channel, t),
+        url: `/channels/${channel.name}`,
+        icon: CHANNEL_ICON_MAP[channel.name] ?? IconPlug,
+      })),
+    [t, sortedChannels],
+  )
+
   const toggleShowAllChannels = React.useCallback(() => {
     setShowAllChannels((prev) => !prev)
   }, [])
 
   return {
     channelItems,
+    allChannelItems,
     hasMoreChannels,
     showAllChannels,
     toggleShowAllChannels,
