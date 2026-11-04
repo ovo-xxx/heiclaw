@@ -57,7 +57,6 @@
     "notConnected": "服务未运行，请先启动以进行对话。",
     "thinking": {
       "label": "思考强度",
-      "configuredFallback": "模型默认",
       "level": {
         "off": "关",
         "low": "低",

@@ -59,10 +59,16 @@ export function FileDiff({
       </div>
 
       {markup ? (
-        <div
-          className="[&_.d2h-code-line]:font-mono [&_.d2h-file-header]:hidden [&_.d2h-file-wrapper]:m-0 [&_.d2h-file-wrapper]:rounded-none [&_.d2h-file-wrapper]:border-0"
-          dangerouslySetInnerHTML={{ __html: markup }}
-        />
+        // Long lines scroll inside the card; without this the table widened the page
+        // and the diff ran off the bottom of the layout. The inner box keeps its
+        // natural width and a floor of 100%, so the two number columns never collapse
+        // to nothing when the pane is narrow.
+        <div className="overflow-x-auto">
+          <div
+            className="w-max min-w-full [&_.d2h-code-line]:font-mono [&_.d2h-code-linenumber]:w-[1%] [&_.d2h-code-linenumber]:whitespace-nowrap [&_.d2h-file-header]:hidden [&_.d2h-file-wrapper]:m-0 [&_.d2h-file-wrapper]:rounded-none [&_.d2h-file-wrapper]:border-0 [&_.line-num1]:min-w-[2.5rem] [&_.line-num2]:min-w-[2.5rem]"
+            dangerouslySetInnerHTML={{ __html: markup }}
+          />
+        </div>
       ) : (
         <div className="text-muted-foreground/60 px-3 py-2 text-[11px]">
           {t("chat.diffEmpty")}

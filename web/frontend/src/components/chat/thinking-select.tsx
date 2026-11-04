@@ -36,33 +36,23 @@ export function ThinkingSelect({
   onValueChange,
 }: ThinkingSelectProps) {
   const { t } = useTranslation()
+  // Always one of the four levels: the conversation's own choice, else the level the
+  // model entry configures, else 关 - the state in which nothing is sent with the
+  // message.
+  const current =
+    value || (isThinkingLevel(configuredLevel ?? "") ? configuredLevel : "off")
 
   return (
-    <Select
-      value={value || "__configured__"}
-      onValueChange={(next) =>
-        onValueChange(next === "__configured__" ? "" : next)
-      }
-      disabled={disabled}
-    >
+    <Select value={current} onValueChange={onValueChange} disabled={disabled}>
       <SelectTrigger
         size="sm"
         aria-label={t("chat.thinking.label")}
         title={t("chat.thinking.label")}
-        className="text-muted-foreground hover:text-foreground focus-visible:border-input h-8 w-[92px] shrink-0 bg-transparent px-2 text-[12px] shadow-none focus-visible:ring-0"
+        className="text-muted-foreground hover:text-foreground focus-visible:border-input h-8 w-[72px] shrink-0 bg-transparent px-2 text-[12px] shadow-none focus-visible:ring-0"
       >
         <SelectValue />
       </SelectTrigger>
       <SelectContent position="popper" align="start">
-        {/* The un-set state is the model's own configured effort, not a guess: the
-            name comes from the model entry, and nothing is sent while it is chosen. */}
-        <SelectItem value="__configured__">
-          {configuredLevel && isThinkingLevel(configuredLevel)
-            ? t(`chat.thinking.level.${configuredLevel}`, {
-                defaultValue: configuredLevel,
-              })
-            : t("chat.thinking.configuredFallback")}
-        </SelectItem>
         {THINKING_LEVELS.map((level) => (
           <SelectItem key={level} value={level}>
             {t(`chat.thinking.level.${level}`)}

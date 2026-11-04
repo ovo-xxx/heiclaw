@@ -51,7 +51,7 @@ function StatCell({
   hint?: ReactNode
 }) {
   const cell = (
-    <div className="flex min-w-0 cursor-help items-baseline justify-between gap-1.5">
+    <div className="inline-flex min-w-0 cursor-help items-baseline gap-1">
       <span className="text-muted-foreground/55 min-w-0 truncate text-[10px]">
         {label}
       </span>
@@ -128,7 +128,7 @@ function LLMCallRow({
     call.cost !== undefined
 
   return (
-    <div className="border-border/25 bg-background/45 dark:bg-background/20 rounded-lg border px-2 py-1">
+    <div className="border-border/20 border-t pt-1 first:border-t-0 first:pt-0">
       <div className="flex min-w-0 items-baseline gap-1.5">
         <span className="text-muted-foreground/50 shrink-0 font-mono text-[10px]">
           #{call.index || position}
@@ -148,7 +148,7 @@ function LLMCallRow({
         )}
       </div>
 
-      <div className="mt-0.5 grid grid-cols-2 gap-x-3 gap-y-0 sm:grid-cols-4">
+      <div className="mt-0.5 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
         <TokenCell
           label={t("chat.turnStats.input")}
           value={call.tokens.input_tokens}
@@ -248,7 +248,7 @@ export function TurnStatsDetail({ stats, modelName }: TurnStatsDetailProps) {
   const droppedTools = stats.dropped_tool_count ?? 0
 
   return (
-    <div className="border-border/30 bg-muted/20 dark:bg-muted/10 flex flex-col gap-1.5 rounded-xl border px-2.5 py-1.5">
+    <div className="border-border/30 bg-muted/20 dark:bg-muted/10 flex flex-col gap-1 rounded-lg border px-2 py-1">
       {modelName && (
         <div className="flex min-w-0 items-baseline justify-between gap-2">
           <SectionTitle>{t("chat.turnStats.modelTitle")}</SectionTitle>
@@ -258,7 +258,7 @@ export function TurnStatsDetail({ stats, modelName }: TurnStatsDetailProps) {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-x-3 gap-y-0 sm:grid-cols-4">
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
         {stats.duration_ms !== undefined && (
           <StatCell
             label={t("chat.turnStats.duration")}
@@ -303,7 +303,7 @@ export function TurnStatsDetail({ stats, modelName }: TurnStatsDetailProps) {
 
       <div>
         <SectionTitle>{t("chat.turnStats.tokensTitle")}</SectionTitle>
-        <div className="mt-0.5 grid grid-cols-2 gap-x-3 gap-y-0 sm:grid-cols-4">
+        <div className="mt-0.5 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
           <TokenCell
             label={t("chat.turnStats.input")}
             value={tokens.input_tokens}
@@ -426,7 +426,7 @@ export function TurnStatsDetail({ stats, modelName }: TurnStatsDetailProps) {
               {context.used_percent}%
             </span>
           </div>
-          <div className="mt-0.5 grid grid-cols-2 gap-x-3 gap-y-0 sm:grid-cols-4">
+          <div className="mt-0.5 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
             <StatCell
               label={t("chat.turnStats.contextUsed")}
               value={`${formatTokenCount(context.used_tokens)} / ${formatTokenCount(context.total_tokens)}`}
