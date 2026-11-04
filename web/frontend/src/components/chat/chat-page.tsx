@@ -149,6 +149,7 @@ export function ChatPage({ sessionId }: { sessionId?: string } = {}) {
     useTerminalPanelToggle()
 
   const {
+    providerOptions,
     defaultModelName,
     hasAvailableModels,
     apiKeyModels,
@@ -527,6 +528,7 @@ export function ChatPage({ sessionId }: { sessionId?: string } = {}) {
             <ModelPicker
               value={selectedModelName}
               selectedModel={selectedModel}
+              providerOptions={providerOptions}
               groups={[
                 {
                   key: "apikey",

@@ -5,7 +5,9 @@ import {
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
 
-import type { ModelInfo } from "@/api/models"
+import type { ModelInfo, ModelProviderOption } from "@/api/models"
+import { ProviderIcon } from "@/components/models/provider-icon"
+import { getProviderCatalogEntry } from "@/components/models/provider-registry"
 import {
   Popover,
   PopoverContent,
@@ -88,10 +90,30 @@ interface ModelPickerProps {
   groups: ModelGroup[]
   /** The entry behind `value`, when the list still has it. */
   selectedModel?: ModelInfo
+  /** The provider catalog, so each row can wear the provider's own logo. */
+  providerOptions?: ModelProviderOption[]
   disabled?: boolean
   onModelChange: (modelName: string) => void
   /** Absent when the model does not reason or nothing is selected. */
   thinking: ThinkingPickerProps | null
+}
+
+function ProviderBadge({
+  provider,
+  providerOptions,
+}: {
+  provider: string | undefined
+  providerOptions?: ModelProviderOption[]
+}) {
+  const entry = getProviderCatalogEntry(provider, providerOptions)
+  if (entry) {
+    return <ProviderIcon provider={entry} />
+  }
+  return (
+    <span className="border-border/60 bg-background flex size-4 shrink-0 items-center justify-center rounded-sm border text-[9px] font-semibold">
+      {providerInitial(provider)}
+    </span>
+  )
 }
 
 function providerInitial(provider: string | undefined): string {
@@ -119,6 +141,7 @@ export function ModelPicker({
   value,
   groups,
   selectedModel,
+  providerOptions,
   disabled = false,
   onModelChange,
   thinking,
@@ -141,9 +164,10 @@ export function ModelPicker({
           )}
         >
           {selectedModel && (
-            <span className="border-border/60 bg-background flex size-4 shrink-0 items-center justify-center rounded-sm border text-[9px] font-semibold">
-              {providerInitial(selectedModel.provider)}
-            </span>
+            <ProviderBadge
+              provider={selectedModel.provider}
+              providerOptions={providerOptions}
+            />
           )}
           <span className="text-foreground/85 max-w-[130px] truncate font-medium">
             {label || t("chat.noModel")}
@@ -186,9 +210,10 @@ export function ModelPicker({
                         selected && "bg-accent/60",
                       )}
                     >
-                      <span className="border-border/60 bg-background flex size-4 shrink-0 items-center justify-center rounded-sm border text-[9px] font-semibold">
-                        {providerInitial(model.provider)}
-                      </span>
+                      <ProviderBadge
+                        provider={model.provider}
+                        providerOptions={providerOptions}
+                      />
                       <span className="text-foreground/90 min-w-0 flex-1 truncate text-xs">
                         {model.model_name}
                       </span>

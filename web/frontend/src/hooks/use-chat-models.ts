@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
-import { type ModelInfo, getModels } from "@/api/models"
+import {
+  type ModelInfo,
+  type ModelProviderOption,
+  getModels,
+} from "@/api/models"
 
 interface UseChatModelsOptions {
   isConnected: boolean
@@ -24,6 +28,7 @@ function isLocalModel(model: ModelInfo): boolean {
  */
 export function useChatModels({ isConnected }: UseChatModelsOptions) {
   const [modelList, setModelList] = useState<ModelInfo[]>([])
+  const [providerOptions, setProviderOptions] = useState<ModelProviderOption[]>([])
   const [defaultModelName, setDefaultModelName] = useState("")
   const loadModelsRequestIdRef = useRef(0)
 
@@ -33,6 +38,7 @@ export function useChatModels({ isConnected }: UseChatModelsOptions) {
       const data = await getModels()
       if (requestId !== loadModelsRequestIdRef.current) return
       setModelList(data.models)
+      setProviderOptions(data.provider_options ?? [])
       setDefaultModelName(data.default_model.trim())
     } catch {
       // silently fail
@@ -93,6 +99,7 @@ export function useChatModels({ isConnected }: UseChatModelsOptions) {
   )
 
   return {
+    providerOptions,
     defaultModelName,
     hasAvailableModels,
     apiKeyModels,
