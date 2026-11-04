@@ -6,7 +6,7 @@ import {
   IconPlus,
   IconX,
 } from "@tabler/icons-react"
-import { useAtom, useSetAtom } from "jotai"
+import { useAtom } from "jotai"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import {
@@ -25,8 +25,11 @@ import { Button } from "@/components/ui/button"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 import {
+  type TerminalGroupState,
+  type TerminalGroupsState,
   type TerminalLayoutSkeletonNode,
-  terminalLayoutAtom,
+  terminalGroupColor,
+  terminalGroupsAtom,
   terminalPanelExpandedAtom,
 } from "@/store/terminal"
 
@@ -70,6 +73,14 @@ const statusColor: Record<TerminalTabStatus, string> = {
 
 function tabTitle(id: string): string {
   return terminalManager.label(id) || id
+}
+
+function newGroupId(): string {
+  const webCrypto = globalThis.crypto
+  if (webCrypto && typeof webCrypto.randomUUID === "function") {
+    return webCrypto.randomUUID()
+  }
+  return `group-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`
 }
 
 /**
@@ -175,59 +186,230 @@ function collectTabIds(
   return into
 }
 
+/**
+ * Terminal groups: each one is a page with its own split tree and its own shells,
+ * switched by the coloured marks at the left of the strip. A new group starts as a
+ * single pane, so it never joins another group's split.
+ */
 export function TerminalWorkspace({
   variant,
   className,
 }: TerminalWorkspaceProps) {
   const { t } = useTranslation()
   const isMobile = useIsMobile()
-  const tabs = useTerminalTabs()
-  const [layout] = useAtom(terminalLayoutAtom)
-  const setLayout = useSetAtom(terminalLayoutAtom)
+  const [groupsState, setGroupsState] = useAtom(terminalGroupsAtom)
   const [expanded, setExpanded] = useAtom(terminalPanelExpandedAtom)
-  const workspaceRef = useRef<WorkspaceImperativeHandle<
-    string,
-    unknown
-  > | null>(null)
-
-  // Building the model starts shells, so it happens in an effect (twice in
-  // StrictMode dev otherwise) and the workspace only mounts once it exists.
-  const [model, setModel] = useState<LayoutModel | null>(null)
+  const [models, setModels] = useState<Record<string, LayoutModel>>({})
+  const modelsRef = useRef<Record<string, LayoutModel>>({})
+  modelsRef.current = models
   const builtRef = useRef(false)
 
+  // Building a model starts shells. On mount every stored group gets its shells back
+  // (fresh processes, same layout); an install with no groups gets one page.
   useEffect(() => {
     if (builtRef.current) {
       return
     }
     builtRef.current = true
-    setModel(
-      buildModel(
-        layout,
-        terminalManager.getSnapshot().map((tab) => tab.id),
-      ),
-    )
+    const pool = terminalManager.getSnapshot().map((tab) => tab.id)
+    let groups = groupsState.groups
+    let activeId = groupsState.activeId
+    if (groups.length === 0) {
+      groups = [
+        {
+          id: newGroupId(),
+          color: terminalGroupColor(0),
+          skeleton: { type: "tabset", tabs: 1 },
+        },
+      ]
+      activeId = groups[0].id
+      setGroupsState({ activeId, groups })
+    }
+    const next: Record<string, LayoutModel> = {}
+    for (const group of groups) {
+      next[group.id] = buildModel(group.skeleton, pool)
+    }
+    setModels(next)
     // Skeleton and sessions are read once, at mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Sockets live in the manager, not in this tree: the last view to unmount takes
-  // them down, so a hidden dock keeps its shells but a route change does not
-  // leave them running.
-  useEffect(() => {
-    terminalManager.retain()
-    return () => {
-      terminalManager.release()
+  const activeId = models[groupsState.activeId]
+    ? groupsState.activeId
+    : groupsState.groups.find((group) => models[group.id])?.id
+
+  // Shells live in the manager, not in a tree: anything no group still holds is a
+  // leaked PTY and is closed here, once, for the union of all groups.
+  const reconcile = useCallback((nextModels: Record<string, LayoutModel>) => {
+    const alive = new Set<string>()
+    for (const model of Object.values(nextModels)) {
+      collectTabIds(model.root, alive)
+    }
+    for (const tab of terminalManager.getSnapshot()) {
+      if (!alive.has(tab.id)) {
+        terminalManager.closeTab(tab.id)
+      }
     }
   }, [])
 
+  const handleModelChanged = useCallback(
+    (groupId: string, next: LayoutModel) => {
+      setModels((prev) => {
+        const merged = { ...prev, [groupId]: next }
+        reconcile(merged)
+        return merged
+      })
+      setGroupsState((prev) => ({
+        ...prev,
+        groups: prev.groups.map((group) =>
+          group.id === groupId
+            ? { ...group, skeleton: toSkeleton(next.root) }
+            : group,
+        ),
+      }))
+      // A group whose last tab went away has nothing left to show.
+      if (countTabs(next.root) === 0) {
+        queueMicrotask(() => closeGroup(groupId))
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [reconcile, setGroupsState],
+  )
+
+  const closeGroup = useCallback(
+    (groupId: string) => {
+      const model = modelsRef.current[groupId]
+      if (model) {
+        for (const tabId of collectTabIds(model.root)) {
+          terminalManager.closeTab(tabId)
+        }
+      }
+      setModels((prev) => {
+        const next = { ...prev }
+        delete next[groupId]
+        return next
+      })
+      setGroupsState((prev) => {
+        const groups = prev.groups.filter((group) => group.id !== groupId)
+        const activeId =
+          prev.activeId === groupId
+            ? (groups[groups.length - 1]?.id ?? "")
+            : prev.activeId
+        return { activeId, groups }
+      })
+    },
+    [setGroupsState],
+  )
+
+  const addGroup = useCallback(() => {
+    const tabId = terminalManager.createTab()
+    const group: TerminalGroupState = {
+      id: newGroupId(),
+      color: terminalGroupColor(groupsState.groups.length),
+      skeleton: { type: "tabset", tabs: 1 },
+    }
+    const model = buildModel(group.skeleton, [tabId])
+    setModels((prev) => ({ ...prev, [group.id]: model }))
+    setGroupsState((prev: TerminalGroupsState) => ({
+      activeId: group.id,
+      groups: [...prev.groups, group],
+    }))
+  }, [groupsState.groups.length, setGroupsState])
+
+  const selectGroup = useCallback(
+    (groupId: string) => {
+      setGroupsState((prev) => ({ ...prev, activeId: groupId }))
+    },
+    [setGroupsState],
+  )
+
+  const hasModels = Object.keys(models).length > 0
+
+  return (
+    <div
+      className={cn(
+        "bg-card text-card-foreground flex h-full min-h-0 flex-col overflow-hidden",
+        className,
+      )}
+    >
+      {!hasModels ? (
+        <div className="text-muted-foreground flex min-h-0 flex-1 flex-col items-center justify-center gap-2 text-xs">
+          <span>{t("pages.terminal.emptyPane")}</span>
+          <Button type="button" size="xs" variant="outline" onClick={addGroup}>
+            <IconPlus className="size-3" />
+            {t("pages.terminal.newGroup")}
+          </Button>
+        </div>
+      ) : (
+        groupsState.groups.map((group) =>
+          models[group.id] ? (
+            <GroupWorkspace
+              key={group.id}
+              groupId={group.id}
+              model={models[group.id]}
+              active={group.id === activeId}
+              variant={variant}
+              isMobile={isMobile}
+              expanded={expanded}
+              setExpanded={setExpanded}
+              groups={groupsState.groups}
+              activeGroupId={activeId}
+              onSelectGroup={selectGroup}
+              onAddGroup={addGroup}
+              onCloseGroup={closeGroup}
+              onModelChanged={handleModelChanged}
+            />
+          ) : null,
+        )
+      )}
+    </div>
+  )
+}
+
+interface GroupWorkspaceProps {
+  groupId: string
+  model: LayoutModel
+  active: boolean
+  variant: "dock" | "page"
+  isMobile: boolean
+  expanded: boolean
+  setExpanded: (updater: (value: boolean) => boolean) => void
+  groups: TerminalGroupState[]
+  activeGroupId?: string
+  onSelectGroup: (groupId: string) => void
+  onAddGroup: () => void
+  onCloseGroup: (groupId: string) => void
+  onModelChanged: (groupId: string, next: LayoutModel) => void
+}
+
+function GroupWorkspace({
+  groupId,
+  model,
+  active,
+  variant,
+  isMobile,
+  expanded,
+  setExpanded,
+  groups,
+  activeGroupId,
+  onSelectGroup,
+  onAddGroup,
+  onCloseGroup,
+  onModelChanged,
+}: GroupWorkspaceProps) {
+  const { t } = useTranslation()
+  const tabs = useTerminalTabs()
+  const workspaceRef = useRef<WorkspaceImperativeHandle<
+    string,
+    unknown
+  > | null>(null)
   const [activePaneId, setActivePaneId] = useState<string | undefined>(
     undefined,
   )
   // A split's new pane only exists after the library reports the new model, so the
   // tab we want to focus is remembered here until then.
   const pendingSplitFocusTabId = useRef<string | null>(null)
-  const targetTabsetId =
-    activePaneId ?? (model ? firstTabsetId(model.root) : undefined)
+  const targetTabsetId = activePaneId ?? firstTabsetId(model.root)
 
   const addTab = useCallback(() => {
     const workspace = workspaceRef.current
@@ -281,25 +463,6 @@ export function TerminalWorkspace({
     [isMobile, setExpanded, targetTabsetId],
   )
 
-
-  // Closing the last tab empties the model while the dock toggle can still create
-  // a shell; without this the two disagree and a live session has no tab.
-  useEffect(() => {
-    const workspace = workspaceRef.current
-    if (!workspace || !model) {
-      return
-    }
-    if (tabs.length > 0 && countTabs(model.root) === 0) {
-      for (const tab of tabs) {
-        workspace.addTab({ id: tab.id, title: tabTitle(tab.id), data: tab.id })
-      }
-    }
-  }, [model, tabs])
-
-  if (!model) {
-    return null
-  }
-
   const tabsets: Extract<LayoutNode, { type: "tabset" }>[] = []
   walkTabsets(model.root, (tabset) => tabsets.push(tabset))
   const paneCount = tabsets.length
@@ -307,13 +470,21 @@ export function TerminalWorkspace({
   return (
     <div
       className={cn(
-        "bg-card text-card-foreground flex h-full min-h-0 flex-col overflow-hidden",
-        className,
+        "min-h-0 flex-1 flex-col",
+        active ? "flex" : "hidden",
       )}
     >
-      {/* One header strip for the whole panel. The library's per-tabset header
-          (44px each) is hidden in index.css so splitting never multiplies it. */}
+      {/* One header strip per group: the library's own per-tabset header (44px each)
+          is hidden in index.css so splitting never multiplies it. The group marks
+          sit at the left, then that group's tabs. */}
       <div className="border-border flex h-7 min-w-0 shrink-0 items-center border-b">
+        <GroupMarks
+          groups={groups}
+          activeGroupId={activeGroupId}
+          onSelect={onSelectGroup}
+          onAdd={onAddGroup}
+          onClose={onCloseGroup}
+        />
         <div className="flex min-w-0 flex-1 scrollbar-none items-center gap-0.5 overflow-x-auto ps-1">
           {tabsets.map((tabset, paneIndex) =>
             tabset.tabs.map((tab) => {
@@ -328,7 +499,7 @@ export function TerminalWorkspace({
                   label={tabTitle(tab.id)}
                   status={info?.status}
                   selected={selected}
-                  focused={targetTabsetId === tabset.id}
+                  focused={active && targetTabsetId === tabset.id}
                   paneNumber={paneCount > 1 ? paneIndex + 1 : null}
                   onSelect={() => {
                     setActivePaneId(tabset.id)
@@ -430,8 +601,7 @@ export function TerminalWorkspace({
           defaultModel={model}
           onModelChanged={(next) => {
             const changed = next
-            setModel(changed)
-            setLayout(toSkeleton(changed.root))
+            onModelChanged(groupId, changed)
             const liveTabsets = collectTabsetIds(changed.root)
             setActivePaneId((current) => {
               const pending = pendingSplitFocusTabId.current
@@ -444,15 +614,6 @@ export function TerminalWorkspace({
               }
               return current && liveTabsets.has(current) ? current : undefined
             })
-            // The library closes tabs on its own, so the model is the only truth
-            // about which shells should still exist: anything the manager holds
-            // that is no longer in the tree is a leaked PTY.
-            const alive = collectTabIds(changed.root)
-            for (const tab of terminalManager.getSnapshot()) {
-              if (!alive.has(tab.id)) {
-                terminalManager.closeTab(tab.id)
-              }
-            }
           }}
           renderTabContent={(tab) => (
             <TerminalPane
@@ -470,6 +631,70 @@ export function TerminalWorkspace({
           className="h-full min-h-0"
         />
       </div>
+    </div>
+  )
+}
+
+// Coloured marks, one per group: filled means active, a ring means it exists. No
+// names, the way Chrome marks tab groups.
+function GroupMarks({
+  groups,
+  activeGroupId,
+  onSelect,
+  onAdd,
+  onClose,
+}: {
+  groups: TerminalGroupState[]
+  activeGroupId?: string
+  onSelect: (groupId: string) => void
+  onAdd: () => void
+  onClose: (groupId: string) => void
+}) {
+  const { t } = useTranslation()
+
+  return (
+    <div className="border-border/60 flex shrink-0 items-center gap-1 border-r px-1.5">
+      {groups.map((group, index) => {
+        const active = group.id === activeGroupId
+        return (
+          <button
+            key={group.id}
+            type="button"
+            onClick={() => onSelect(group.id)}
+            aria-label={t("pages.terminal.groupMarks", { number: index + 1 })}
+            aria-pressed={active}
+            title={t("pages.terminal.groupMarks", { number: index + 1 })}
+            className={cn(
+              "size-3 shrink-0 rounded-[3px] border transition-opacity",
+              active ? "opacity-100" : "opacity-60 hover:opacity-90",
+            )}
+            style={{
+              borderColor: group.color,
+              backgroundColor: active ? group.color : "transparent",
+            }}
+          />
+        )
+      })}
+      <button
+        type="button"
+        onClick={onAdd}
+        aria-label={t("pages.terminal.newGroup")}
+        title={t("pages.terminal.newGroup")}
+        className="text-muted-foreground hover:text-foreground flex size-4 items-center justify-center rounded-sm transition-colors"
+      >
+        <IconPlus className="size-3" />
+      </button>
+      {activeGroupId && (
+        <button
+          type="button"
+          onClick={() => onClose(activeGroupId)}
+          aria-label={t("pages.terminal.closeGroup")}
+          title={t("pages.terminal.closeGroup")}
+          className="text-muted-foreground hover:text-foreground flex size-4 items-center justify-center rounded-sm transition-colors"
+        >
+          <IconX className="size-3" />
+        </button>
+      )}
     </div>
   )
 }

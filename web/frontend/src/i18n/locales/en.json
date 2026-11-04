@@ -1090,7 +1090,10 @@
         "open": "Connected",
         "exited": "Exited",
         "failed": "Failed"
-      }
+      },
+      "newGroup": "New terminal page",
+      "groupMarks": "Terminal page {{number}}",
+      "closeGroup": "Close this page and its terminals"
     },
     "logs": {
       "log_level_error": "Failed to update log level.",
