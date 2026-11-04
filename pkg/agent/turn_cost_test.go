@@ -51,6 +51,33 @@ func TestLLMCallStatPricesTheCallThatAnswered(t *testing.T) {
 	}
 }
 
+// A price typed on the model entry is what the call is billed at, all day: the row's
+// peak window must not double a figure the user set.
+func TestLLMCallStatPricesWithConfiguredRates(t *testing.T) {
+	startedAt := time.Date(2026, time.November, 4, 10, 0, 0, 0, time.FixedZone("CST", 8*3600))
+	exec := &turnExecution{
+		activeModelConfig: &config.ModelConfig{
+			ModelName: "flash",
+			Model:     "deepseek-flash",
+			Pricing:   &config.ModelPricing{InputPerMTok: 3, CacheReadPerMTok: 0.5, OutputPerMTok: 9},
+		},
+		response: &providers.LLMResponse{
+			Usage: &providers.UsageInfo{PromptTokens: 1_000_000, TotalTokens: 1_000_000},
+		},
+	}
+
+	stat := llmCallStat(exec, 1, 1, time.Second, startedAt)
+	if stat.Cost == nil {
+		t.Fatal("a configured price produced no cost")
+	}
+	if !stat.Cost.Custom || stat.Cost.Peak {
+		t.Fatalf("cost = %+v, want custom rates with no band", stat.Cost)
+	}
+	if stat.Cost.InputRate != 3 {
+		t.Errorf("input rate = %v, want the configured 3", stat.Cost.InputRate)
+	}
+}
+
 // A model outside the price table must not borrow a neighbour's rates, and the turn
 // total then stays absent rather than showing a free turn.
 func TestLLMCallStatLeavesUnpricedModelUncosted(t *testing.T) {

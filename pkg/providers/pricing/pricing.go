@@ -227,7 +227,43 @@ func TableFor(model string) (Table, bool) {
 // InputTokens is fresh input only and CacheReadTokens is the cached part billed at
 // its own rate; ReasoningTokens needs no term of its own because it is a subset of
 // OutputTokens and the provider prices it as output.
+// providerCurrencies marks the providers whose billing shape this package knows. A
+// model of another provider has no row, so a custom rate would have no currency and
+// no peak rule to attach to - the panel keeps the price form hidden for those.
+var providerCurrencies = map[string]string{
+	"deepseek": "CNY",
+}
+
+// CurrencyForProvider reports the currency a provider's rows are billed in.
+func CurrencyForProvider(provider string) (string, bool) {
+	currency, ok := providerCurrencies[strings.ToLower(strings.TrimSpace(provider))]
+	return currency, ok
+}
+
+// SameRow reports whether two model identifiers price from the same row, which is
+// what lets a caller decide whether its configured rates apply to a given call.
+func SameRow(a, b string) bool {
+	rowA, okA := TableFor(a)
+	rowB, okB := TableFor(b)
+	return okA && okB && rowA.Name == rowB.Name
+}
+
+// RatesOverride replaces a row's numbers for one configured model. A custom price is
+// one figure the user typed, not two: it applies all day, so the band is not consulted.
+type RatesOverride struct {
+	InputPerMTok     float64
+	CacheReadPerMTok float64
+	OutputPerMTok    float64
+}
+
 func ForCall(model string, at time.Time, usage providers.TurnTokens) *providers.CallCost {
+	return ForCallWithRates(model, at, usage, nil)
+}
+
+// ForCallWithRates prices one call, using the row's own numbers when the model has no
+// custom price. The row must still exist: a model no table covers is not priced by
+// guessing a currency or a peak rule from the user's three numbers.
+func ForCallWithRates(model string, at time.Time, usage providers.TurnTokens, rates *RatesOverride) *providers.CallCost {
 	table, ok := TableFor(model)
 	if !ok {
 		return nil
@@ -236,6 +272,15 @@ func ForCall(model string, at time.Time, usage providers.TurnTokens) *providers.
 	peak := table.IsPeak(at)
 	if peak {
 		rate = table.Peak
+	}
+	custom := rates != nil
+	if custom {
+		rate = Rate{
+			InputPerMTok:     rates.InputPerMTok,
+			CacheReadPerMTok: rates.CacheReadPerMTok,
+			OutputPerMTok:    rates.OutputPerMTok,
+		}
+		peak = false
 	}
 	const perMillion = 1_000_000
 	input := float64(usage.InputTokens) / perMillion * rate.InputPerMTok
@@ -251,6 +296,7 @@ func ForCall(model string, at time.Time, usage providers.TurnTokens) *providers.
 		CacheReadRate: rate.CacheReadPerMTok,
 		OutputRate:    rate.OutputPerMTok,
 		Peak:          peak,
+		Custom:        custom,
 		Table:         table.Name,
 		Source:        table.Source,
 	}

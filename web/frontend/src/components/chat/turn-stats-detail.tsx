@@ -194,9 +194,11 @@ function LLMCallRow({
       {call.cost && (
         <BadgePill>
           {t(
-            call.cost.peak
-              ? "chat.turnStats.peakBand"
-              : "chat.turnStats.offPeakBand",
+            call.cost.custom
+              ? "chat.turnStats.customPriceShort"
+              : call.cost.peak
+                ? "chat.turnStats.peakBand"
+                : "chat.turnStats.offPeakBand",
           )}
         </BadgePill>
       )}

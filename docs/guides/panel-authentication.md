@@ -96,6 +96,12 @@ the cached portion, and shows the money in the turn's statistics. Prices live in
 Rates are per million tokens, in the row's own currency. `Source` is displayed with the
 figure, so a stale row is visible without opening the code; keep the read date in it.
 
+A model entry may carry its own rates in `pricing` — input, cache read and output per
+million tokens. They replace the row's numbers and apply all day: a figure the user typed
+has no peak rule to follow. The row still supplies the currency and the panel labels the
+call as custom rates, and a model no row covers gets no price form at all, because three
+numbers cannot invent a currency.
+
 The key is the **current upstream model identifier** — the string in `model:` of a config
 entry, not the `model_name:` alias the user picks. `TableFor` matches it exactly (after
 dropping a `provider/` prefix), so a row keyed `deepseek-flash` prices a `flash` alias that

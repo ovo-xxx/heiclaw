@@ -79,10 +79,16 @@ export function CostBreakdown({
         </span>
       </div>
 
-      {cost.source && (
-        <div className="text-[10px] leading-snug break-all opacity-55">
-          {cost.source}
+      {cost.custom ? (
+        <div className="text-[10px] leading-snug opacity-55">
+          {t("chat.turnStats.customPrice")}
         </div>
+      ) : (
+        cost.source && (
+          <div className="text-[10px] leading-snug break-all opacity-55">
+            {cost.source}
+          </div>
+        )
       )}
     </div>
   )

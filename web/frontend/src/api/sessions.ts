@@ -61,6 +61,9 @@ export interface TurnCallCost {
   output_rate: number
   table?: string
   source?: string
+  // Rates typed on the model entry rather than read from the row: the panel says so
+  // instead of showing the row's source line, and there is no peak band to name.
+  custom?: boolean
 }
 
 export interface TurnCost {

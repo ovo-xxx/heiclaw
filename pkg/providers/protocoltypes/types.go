@@ -215,6 +215,10 @@ type CallCost struct {
 	// old it is.
 	Table  string `json:"table,omitempty"`
 	Source string `json:"source,omitempty"`
+
+	// Custom marks rates that came from the model entry rather than from the row.
+	// The panel says 自定义价目 instead of showing the row's source line.
+	Custom bool `json:"custom,omitempty"`
 }
 
 // TurnCost is the summed call cost of a turn. Calls priced in different currencies

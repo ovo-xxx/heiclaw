@@ -154,6 +154,7 @@ function parseCallCost(raw: unknown): TurnCallCost | undefined {
     output_rate: toNumber(obj.output_rate),
     table: toText(obj.table),
     source: toText(obj.source),
+    ...(obj.custom === true ? { custom: true } : {}),
   }
 }
 

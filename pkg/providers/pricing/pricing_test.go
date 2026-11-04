@@ -128,8 +128,45 @@ func TestTableForStripsProviderPrefix(t *testing.T) {
 	}
 }
 
-// DeepSeek renamed deepseek-v4-flash to deepseek-flash. Turns stored under the old id
-// still carry it, and their cost must keep appearing after the rename.
+// A price typed on the model entry replaces the row's numbers but not its currency,
+// and it has no band: one figure is what the user pays all day.
+func TestForCallWithRatesUsesCustomRates(t *testing.T) {
+	usage := providers.TurnTokens{InputTokens: 1_000_000, CacheReadTokens: 1_000_000, OutputTokens: 1_000_000}
+	rates := &RatesOverride{InputPerMTok: 3, CacheReadPerMTok: 0.5, OutputPerMTok: 9}
+
+	custom := ForCallWithRates("deepseek-flash", cst(2026, time.November, 4, 10, 0), usage, rates)
+	if custom == nil {
+		t.Fatal("custom rates produced no cost")
+	}
+	if !custom.Custom || custom.Peak {
+		t.Fatalf("custom = %v, peak = %v; want custom and no band", custom.Custom, custom.Peak)
+	}
+	if custom.Currency != "CNY" {
+		t.Errorf("currency = %q, want the row's CNY", custom.Currency)
+	}
+	if !close(custom.Amount, 12.5) {
+		t.Errorf("amount = %v, want 3 + 0.5 + 9", custom.Amount)
+	}
+
+	builtin := ForCallWithRates("deepseek-flash", cst(2026, time.November, 4, 10, 0), usage, nil)
+	if builtin == nil || builtin.Custom {
+		t.Fatal("no rates must fall back to the row")
+	}
+	if !builtin.Peak {
+		t.Error("the row's band must still apply when the user set no rates")
+	}
+}
+
+// Three numbers alone cannot invent a currency or a band, so a model with no row
+// stays unpriced even when it carries custom rates.
+func TestForCallWithRatesRequiresARow(t *testing.T) {
+	if cost := ForCallWithRates("gpt-5-mini", time.Now(), providers.TurnTokens{InputTokens: 10}, &RatesOverride{InputPerMTok: 1}); cost != nil {
+		t.Fatalf("cost = %+v, want none for a model with no row", cost)
+	}
+}
+
+// DeepSeek renamed the model: turns stored under the old id still carry it, and their
+// cost must keep appearing after the rename.
 func TestTableForResolvesLegacyNameAfterRename(t *testing.T) {
 	table, ok := TableFor("deepseek-v4-flash")
 	if !ok || table.Name != "deepseek-flash" {

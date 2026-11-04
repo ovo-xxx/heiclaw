@@ -782,6 +782,22 @@ func (c ModelStreamingConfig) IsZero() bool {
 // Supported providers include openai, anthropic, antigravity, claude-cli,
 // codex-cli, github-copilot, and named OpenAI-compatible protocols such as
 // groq, deepseek, modelscope, and novita.
+// ModelPricing is what a user can set for a model: three per-million rates. The
+// currency, the peak window and the holidays are properties of the provider's price
+// list and stay in pkg/providers/pricing.
+type ModelPricing struct {
+	InputPerMTok     float64 `json:"input_per_mtok"`
+	CacheReadPerMTok float64 `json:"cache_read_per_mtok"`
+	OutputPerMTok    float64 `json:"output_per_mtok"`
+}
+
+// IsZero reports an empty price block, which is stored as no pricing at all rather
+// than as three zeros that would bill every call as free.
+func (p *ModelPricing) IsZero() bool {
+	return p == nil ||
+		(p.InputPerMTok == 0 && p.CacheReadPerMTok == 0 && p.OutputPerMTok == 0)
+}
+
 type ModelConfig struct {
 	// Required fields
 	ModelName string `json:"model_name"` // User-facing alias for the model
@@ -807,6 +823,11 @@ type ModelConfig struct {
 	Streaming           ModelStreamingConfig `json:"streaming,omitzero"`              // Opt-in for provider streaming on this model entry
 	ExtraBody           map[string]any       `json:"extra_body,omitempty"`            // Additional fields to inject into request body
 	CustomHeaders       map[string]string    `json:"custom_headers,omitempty"`        // Additional headers to inject into every HTTP request
+
+	// Pricing carries per-million rates for this entry, replacing the numbers in the
+	// built-in row. The row still supplies the currency and the peak band: how a
+	// provider bills stays in code, what it costs this user is theirs to set.
+	Pricing *ModelPricing `json:"pricing,omitempty"`
 
 	APIKeys SecureStrings `json:"api_keys,omitzero" yaml:"api_keys,omitempty"` // API authentication keys (multiple keys for failover)
 

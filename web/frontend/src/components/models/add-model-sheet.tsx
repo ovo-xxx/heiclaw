@@ -70,6 +70,9 @@ interface AddForm {
   thinkingLevel: string
   toolSchemaTransform: string
   streamingEnabled: boolean
+  priceInput: string
+  priceCacheRead: string
+  priceOutput: string
   extraBody: string
   customHeaders: string
 }
@@ -90,6 +93,9 @@ const EMPTY_ADD_FORM: AddForm = {
   thinkingLevel: "",
   toolSchemaTransform: "",
   streamingEnabled: false,
+  priceInput: "",
+  priceCacheRead: "",
+  priceOutput: "",
   extraBody: "",
   customHeaders: "",
 }
@@ -324,6 +330,15 @@ export function AddModelSheet({
   const providerDef = canonicalProvider
     ? providerMap.get(canonicalProvider)
     : undefined
+  // The backend only offers a price form for providers whose billing rows it knows;
+  // the currency comes from there, never from the form.
+  const priceCurrency =
+    providerOptions?.find((option) => option.id === canonicalProvider)
+      ?.price_currency ?? ""
+  const priceValues =
+    form.priceInput.trim() ||
+    form.priceCacheRead.trim() ||
+    form.priceOutput.trim()
   const commonModels = providerDef?.commonModels || []
   const authMethodLocked = isProviderAuthMethodLocked(
     form.provider,
@@ -407,6 +422,13 @@ export function AddModelSheet({
         thinking_level: form.thinkingLevel.trim() || undefined,
         tool_schema_transform: form.toolSchemaTransform.trim() || undefined,
         streaming: form.streamingEnabled ? { enabled: true } : undefined,
+        pricing: priceValues
+          ? {
+              input_per_mtok: Number(form.priceInput) || 0,
+              cache_read_per_mtok: Number(form.priceCacheRead) || 0,
+              output_per_mtok: Number(form.priceOutput) || 0,
+            }
+          : undefined,
         extra_body: extraBody,
         custom_headers: customHeaders,
       })
@@ -761,6 +783,59 @@ export function AddModelSheet({
                   }
                   ariaLabel={t("models.field.streamingEnabled")}
                 />
+
+                {priceCurrency && (
+                  <div className="border-border/60 flex flex-col gap-2 rounded-lg border p-3">
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-sm font-medium">
+                        {t("models.field.pricing")}
+                      </span>
+                      <span className="text-muted-foreground text-[11px]">
+                        {t("models.field.pricingCurrency", {
+                          currency: priceCurrency,
+                        })}
+                      </span>
+                    </div>
+                    <p className="text-muted-foreground text-xs">
+                      {t("models.field.pricingHint")}
+                    </p>
+                    <div className="grid grid-cols-3 gap-2">
+                      <Field label={t("models.field.priceInput")}>
+                        <Input
+                          value={form.priceInput}
+                          onChange={setField("priceInput")}
+                          placeholder="1"
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          inputMode="decimal"
+                        />
+                      </Field>
+                      <Field label={t("models.field.priceCacheRead")}>
+                        <Input
+                          value={form.priceCacheRead}
+                          onChange={setField("priceCacheRead")}
+                          placeholder="0.02"
+                          type="number"
+                          min={0}
+                          step="0.001"
+                          inputMode="decimal"
+                        />
+                      </Field>
+                      <Field label={t("models.field.priceOutput")}>
+                        <Input
+                          value={form.priceOutput}
+                          onChange={setField("priceOutput")}
+                          placeholder="4"
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          inputMode="decimal"
+                        />
+                      </Field>
+                    </div>
+                  </div>
+                )}
 
                 <Field
                   label={t("models.field.extraBody")}

@@ -175,10 +175,24 @@ func llmCallStat(
 		// user's alias ("fast") and the resolved entry carries the upstream
 		// identifier a price table knows.
 		model := stat.Model
-		if _, ok := pricing.TableFor(model); !ok && exec.activeModelConfig != nil {
-			model = exec.activeModelConfig.Model
+		var rates *pricing.RatesOverride
+		if exec.activeModelConfig != nil {
+			cfgModel := exec.activeModelConfig.Model
+			if _, ok := pricing.TableFor(model); !ok {
+				model = cfgModel
+			}
+			// The custom rates belong to the entry the turn selected. A fallback that
+			// answered under another id keeps its own row's numbers instead of
+			// inheriting a price that was typed for a different model.
+			if p := exec.activeModelConfig.Pricing; !p.IsZero() && pricing.SameRow(model, cfgModel) {
+				rates = &pricing.RatesOverride{
+					InputPerMTok:     p.InputPerMTok,
+					CacheReadPerMTok: p.CacheReadPerMTok,
+					OutputPerMTok:    p.OutputPerMTok,
+				}
+			}
 		}
-		stat.Cost = pricing.ForCall(model, startedAt, stat.Tokens)
+		stat.Cost = pricing.ForCallWithRates(model, startedAt, stat.Tokens, rates)
 	}
 	return stat
 }
