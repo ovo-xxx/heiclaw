@@ -96,13 +96,14 @@ the cached portion, and shows the money in the turn's statistics. Prices live in
 Rates are per million tokens, in the row's own currency. `Source` is displayed with the
 figure, so a stale row is visible without opening the code; keep the read date in it.
 
-The key is the **upstream model identifier** — the string in `model:` of a config entry,
-not the `model_name:` alias the user picks. `TableFor` matches it exactly (after dropping
-a `provider/` prefix), so a row keyed `deepseek-v4-flash` prices a `flash` alias that
-points at that identifier and nothing else. When DeepSeek renames a model, the row key
-has to move with it: `pkg/providers/provider_metadata.go`'s `CommonModels` is the name
-the picker offers, and a row that no longer matches it simply stops pricing without any
-error anywhere.
+The key is the **current upstream model identifier** — the string in `model:` of a config
+entry, not the `model_name:` alias the user picks. `TableFor` matches it exactly (after
+dropping a `provider/` prefix), so a row keyed `deepseek-flash` prices a `flash` alias that
+points at that identifier and nothing else. When a provider renames a model, the row key
+moves with it and the old id goes into `legacyModelNames`, because stored turns keep the
+id they were billed under and must not lose their price; `provider_metadata.go`'s
+`CommonModels` is the name the picker offers, and a row that matches neither silently
+stops pricing without any error anywhere.
 
 A row carries its own peak rule, or none:
 

@@ -176,8 +176,8 @@ var deepSeekBand = newBand(8*3600,
 // here; unknown models are priced as nothing rather than guessed at, and callers
 // show no cost for them.
 var tables = map[string]Table{
-	"deepseek-v4-flash": {
-		Name:     "deepseek-v4-flash",
+	"deepseek-flash": {
+		Name:     "deepseek-flash",
 		Currency: "CNY",
 		OffPeak:  Rate{InputPerMTok: 1, CacheReadPerMTok: 0.02, OutputPerMTok: 4},
 		Peak:     Rate{InputPerMTok: 2, CacheReadPerMTok: 0.04, OutputPerMTok: 8},
@@ -194,6 +194,14 @@ var tables = map[string]Table{
 	},
 }
 
+// legacyModelNames maps identifiers that configs and stored turns still carry from
+// before a provider renamed a model onto the row that prices it. DeepSeek's flash
+// model was named deepseek-v4-flash before it became deepseek-flash; sessions written
+// under the old id keep that id in their stats, and their money must not disappear.
+var legacyModelNames = map[string]string{
+	"deepseek-v4-flash": "deepseek-flash",
+}
+
 // TableFor resolves the price row of an upstream model identifier. Providers may
 // spell the model with a prefix ("deepseek/deepseek-flash"), so the tail after the
 // last slash is what is matched.
@@ -205,8 +213,14 @@ func TableFor(model string) (Table, bool) {
 	if idx := strings.LastIndex(name, "/"); idx >= 0 {
 		name = name[idx+1:]
 	}
-	table, ok := tables[name]
-	return table, ok
+	if table, ok := tables[name]; ok {
+		return table, true
+	}
+	if current, ok := legacyModelNames[name]; ok {
+		table, found := tables[current]
+		return table, found
+	}
+	return Table{}, false
 }
 
 // ForCall prices one call. usage carries the panel-facing token names, where

@@ -86,11 +86,12 @@ loopback 要求：终端只能经由 launcher 绑定的监听访问，所以如�
 单价都是"每百万 token"，用该行自己的币种。`Source` 会跟着金额一起显示，所以价表过期
 不用翻代码就能看出来；请把它连取用日期一起写上。
 
-键名是**上游模型标识**——配置条目里 `model:` 的值，不是用户选的 `model_name:` 别名。
-`TableFor` 精确匹配（去掉 `provider/` 前缀后），所以 `deepseek-v4-flash` 这行只对指向
-该标识的 `flash` 别名计价。供应商改名时键名必须跟着改：`pkg/providers/provider_metadata.go`
-的 `CommonModels` 就是选择器给出的名字，键名一旦对不上，这一行只是安静地不再计价，
-任何地方都不会报错。
+键名是**现行的上游模型标识**——配置条目里 `model:` 的值，不是用户选的 `model_name:` 别名。
+`TableFor` 精确匹配（去掉 `provider/` 前缀后），所以 `deepseek-flash` 这行只对指向该标识的
+`flash` 别名计价。供应商改名时键名跟着改，旧标识写进 `legacyModelNames`——已存下的回合仍
+带着当初计费时的旧 id，不能因此丢掉金额；`pkg/providers/provider_metadata.go` 的
+`CommonModels` 是选择器给出的名字，两边都对不上时这一行只是安静地不再计价，任何地方都不
+会报错。
 
 每行自带自己的高峰规则，或者不带：
 

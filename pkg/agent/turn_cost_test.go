@@ -18,7 +18,7 @@ func TestLLMCallStatPricesTheCallThatAnswered(t *testing.T) {
 		activeModelConfig: &config.ModelConfig{
 			ModelName: "flash",
 			Provider:  "deepseek",
-			Model:     "deepseek-v4-flash",
+			Model:     "deepseek-flash",
 		},
 		llmModel: "flash",
 		response: &providers.LLMResponse{
@@ -43,8 +43,8 @@ func TestLLMCallStatPricesTheCallThatAnswered(t *testing.T) {
 	if stat.Cost == nil {
 		t.Fatal("no cost recorded for a priced model")
 	}
-	if stat.Cost.Table != "deepseek-v4-flash" || stat.Cost.Peak {
-		t.Fatalf("cost = %+v, want the off-peak deepseek-v4-flash row", stat.Cost)
+	if stat.Cost.Table != "deepseek-flash" || stat.Cost.Peak {
+		t.Fatalf("cost = %+v, want the off-peak deepseek-flash row", stat.Cost)
 	}
 	if stat.Cost.Amount < 0.0047 || stat.Cost.Amount > 0.0049 {
 		t.Fatalf("amount = %v, want about 0.0048 CNY", stat.Cost.Amount)
@@ -73,13 +73,13 @@ func TestLLMCallStatLeavesUnpricedModelUncosted(t *testing.T) {
 func TestTurnCostSumsItsCalls(t *testing.T) {
 	ts := &turnState{startedAt: time.Now().Add(-time.Second)}
 	ts.RecordLLMCall(llmCallStat(&turnExecution{
-		activeModelConfig: &config.ModelConfig{Model: "deepseek-v4-flash"},
+		activeModelConfig: &config.ModelConfig{Model: "deepseek-flash"},
 		response: &providers.LLMResponse{
 			Usage: &providers.UsageInfo{PromptTokens: 1_000_000, TotalTokens: 1_000_000},
 		},
 	}, 1, 1, time.Second, time.Date(2026, time.November, 4, 3, 0, 0, 0, time.FixedZone("CST", 8*3600))))
 	ts.RecordLLMCall(llmCallStat(&turnExecution{
-		activeModelConfig: &config.ModelConfig{Model: "deepseek-v4-flash"},
+		activeModelConfig: &config.ModelConfig{Model: "deepseek-flash"},
 		response: &providers.LLMResponse{
 			Usage: &providers.UsageInfo{PromptTokens: 1_000_000, TotalTokens: 1_000_000},
 		},

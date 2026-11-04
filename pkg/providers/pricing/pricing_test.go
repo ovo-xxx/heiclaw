@@ -20,7 +20,7 @@ func cst(year int, month time.Month, day, hour, minute int) time.Time {
 // would resolve rather than off the package.
 func deepSeekRow(t *testing.T) Table {
 	t.Helper()
-	table, ok := TableFor("deepseek-v4-flash")
+	table, ok := TableFor("deepseek-flash")
 	if !ok {
 		t.Fatal("no flash row to test the band against")
 	}
@@ -117,14 +117,26 @@ func TestBandIgnoresUnparsableWindows(t *testing.T) {
 }
 
 func TestTableForStripsProviderPrefix(t *testing.T) {
-	for _, model := range []string{"deepseek-v4-flash", "DeepSeek/deepseek-v4-flash", " deepseek-v4-flash "} {
+	for _, model := range []string{"deepseek-flash", "DeepSeek/deepseek-flash", " deepseek-flash "} {
 		table, ok := TableFor(model)
-		if !ok || table.Name != "deepseek-v4-flash" {
+		if !ok || table.Name != "deepseek-flash" {
 			t.Errorf("TableFor(%q) = %+v, %v; want the flash row", model, table, ok)
 		}
 	}
 	if _, ok := TableFor("gpt-5-mini"); ok {
 		t.Error("TableFor resolved a model no row covers")
+	}
+}
+
+// DeepSeek renamed deepseek-v4-flash to deepseek-flash. Turns stored under the old id
+// still carry it, and their cost must keep appearing after the rename.
+func TestTableForResolvesLegacyNameAfterRename(t *testing.T) {
+	table, ok := TableFor("deepseek-v4-flash")
+	if !ok || table.Name != "deepseek-flash" {
+		t.Fatalf("TableFor(legacy id) = %+v, %v; want the deepseek-flash row", table, ok)
+	}
+	if cost := ForCall("deepseek-v4-flash", cst(2026, time.November, 4, 3, 0), providers.TurnTokens{InputTokens: 1000}); cost == nil {
+		t.Fatal("a stored turn under the old id lost its price")
 	}
 }
 
@@ -148,6 +160,14 @@ func TestEveryRowIsAdvertisedByItsProvider(t *testing.T) {
 			t.Errorf("price row %q matches no CommonModels entry, so no config can hit it", name)
 		}
 	}
+	for legacy, current := range legacyModelNames {
+		if _, ok := tables[current]; !ok {
+			t.Errorf("legacy id %q points at %q, which is not a row", legacy, current)
+		}
+		if _, ok := tables[legacy]; ok {
+			t.Errorf("legacy id %q is also a canonical row; the alias would never be reached", legacy)
+		}
+	}
 }
 
 func TestForCallPricesEachCategorySeparately(t *testing.T) {
@@ -157,7 +177,7 @@ func TestForCallPricesEachCategorySeparately(t *testing.T) {
 		CacheReadTokens: 90_000,
 		OutputTokens:    500,
 	}
-	cost := ForCall("deepseek-v4-flash", cst(2026, time.November, 4, 3, 0), usage)
+	cost := ForCall("deepseek-flash", cst(2026, time.November, 4, 3, 0), usage)
 	if cost == nil {
 		t.Fatal("ForCall returned nothing for a covered model")
 	}
@@ -175,7 +195,7 @@ func TestForCallPricesEachCategorySeparately(t *testing.T) {
 		t.Fatalf("band/currency = %v %q, want off-peak CNY", cost.Peak, cost.Currency)
 	}
 
-	peak := ForCall("deepseek-v4-flash", cst(2026, time.November, 4, 10, 0), usage)
+	peak := ForCall("deepseek-flash", cst(2026, time.November, 4, 10, 0), usage)
 	if !peak.Peak {
 		t.Fatal("10:00 on a Wednesday should price as peak")
 	}
