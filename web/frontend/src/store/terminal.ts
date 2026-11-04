@@ -28,35 +28,19 @@ export type TerminalLayoutSkeletonNode =
 export type TerminalLayoutSkeleton = TerminalLayoutSkeletonNode
 
 /**
- * A group is one page of the terminal: its own split tree and its own shells. Groups
- * carry a colour instead of a name, the way Chrome labels tab groups, so the strip
- * stays a row of marks rather than a list of words.
+ * A group is one page of the terminal: its own split tree and its own shells. A
+ * plain new terminal is a group of one, and splitting turns that one into a group
+ * of several - which is why nothing is labelled or coloured: the join is drawn
+ * around the tabs themselves.
  */
 export interface TerminalGroupState {
   id: string
-  color: string
   skeleton: TerminalLayoutSkeleton
 }
 
 export interface TerminalGroupsState {
   activeId: string
   groups: TerminalGroupState[]
-}
-
-export const TERMINAL_GROUP_COLORS = [
-  "#8f959e", // grey
-  "#1a73e8", // blue
-  "#d93025", // red
-  "#f9ab00", // yellow
-  "#188038", // green
-  "#d01884", // pink
-  "#7b1fa2", // purple
-  "#007b83", // cyan
-  "#fa7b17", // orange
-] as const
-
-export function terminalGroupColor(index: number): string {
-  return TERMINAL_GROUP_COLORS[index % TERMINAL_GROUP_COLORS.length]
 }
 
 export const DEFAULT_TERMINAL_GROUPS: TerminalGroupsState = {

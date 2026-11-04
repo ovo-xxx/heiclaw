@@ -1091,9 +1091,8 @@
         "exited": "Exited",
         "failed": "Failed"
       },
-      "newGroup": "New terminal page",
-      "groupMarks": "Terminal page {{number}}",
-      "closeGroup": "Close this page and its terminals"
+      "newGroup": "New terminal",
+      "closeGroup": "Close this group of terminals"
     },
     "logs": {
       "log_level_error": "Failed to update log level.",

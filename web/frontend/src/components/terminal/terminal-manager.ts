@@ -197,6 +197,14 @@ class TerminalManager {
     this.mutate(session, { customTitle: title.trim() })
   }
 
+  /** Point the keyboard at one shell - what the strip's underline promises. */
+  focus(id: string) {
+    const session = this.sessions.get(id)
+    if (session && !session.disposed) {
+      this.focusTab(session)
+    }
+  }
+
   /** Fresh PTY for an exited or failed tab: same slot, same id, new socket. */
   retryTab(id: string) {
     const session = this.sessions.get(id)

@@ -1091,9 +1091,8 @@
         "exited": "已退出",
         "failed": "失败"
       },
-      "newGroup": "新建终端页",
-      "groupMarks": "终端页 {{number}}",
-      "closeGroup": "关闭本页及其所有终端"
+      "newGroup": "新建终端",
+      "closeGroup": "关闭这一组终端"
     },
     "logs": {
       "log_level_error": "更新日志等级失败。",
