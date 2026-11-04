@@ -209,7 +209,8 @@
     "diffEmpty": "No diff text was returned for this change.",
     "diffBinary": "Binary file — no text diff to show.",
     "searching": "Searching messages…",
-    "untitledConversation": "Untitled conversation"
+    "untitledConversation": "Untitled conversation",
+    "modelLabel": "Choose model"
   },
   "header": {
     "logout": {

@@ -46,7 +46,6 @@ interface ChatComposerProps {
   /** Model picker lives in the composer, next to where the message is typed. */
   modelSelector?: ReactNode
   /** Thinking effort, offered next to the model for models that support it. */
-  thinkingSelector?: ReactNode
   /** Terminal dock (or any panel) sits directly below: drop the bottom gap. */
   flushBottom?: boolean
 }
@@ -69,7 +68,6 @@ export function ChatComposer({
   isDragActive,
   contextUsage,
   modelSelector,
-  thinkingSelector,
   flushBottom,
 }: ChatComposerProps) {
   const { t } = useTranslation()
@@ -191,7 +189,6 @@ export function ChatComposer({
                 <IconPhotoPlus className="size-4" />
               </Button>
               {modelSelector}
-              {thinkingSelector}
             </div>
 
             <div className="flex items-center gap-1.5">

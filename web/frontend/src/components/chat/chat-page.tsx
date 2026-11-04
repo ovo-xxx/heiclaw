@@ -19,8 +19,7 @@ import {
   type ChatInputDisabledReason,
 } from "@/components/chat/chat-composer"
 import { ChatEmptyState } from "@/components/chat/chat-empty-state"
-import { ModelSelector } from "@/components/chat/model-selector"
-import { ThinkingSelect } from "@/components/chat/thinking-select"
+import { ModelPicker } from "@/components/chat/model-picker"
 import { TypingIndicator } from "@/components/chat/typing-indicator"
 import { UserMessage } from "@/components/chat/user-message"
 import { PageHeader } from "@/components/page-header"
@@ -525,25 +524,39 @@ export function ChatPage({ sessionId }: { sessionId?: string } = {}) {
         flushBottom={terminalOpen}
         modelSelector={
           hasAvailableModels ? (
-            <ModelSelector
+            <ModelPicker
               value={selectedModelName}
-              apiKeyModels={apiKeyModels}
-              oauthModels={oauthModels}
-              localModels={localModels}
+              selectedModel={selectedModel}
+              groups={[
+                {
+                  key: "apikey",
+                  labelKey: "chat.modelGroup.apikey",
+                  models: apiKeyModels,
+                },
+                {
+                  key: "oauth",
+                  labelKey: "chat.modelGroup.oauth",
+                  models: oauthModels,
+                },
+                {
+                  key: "local",
+                  labelKey: "chat.modelGroup.local",
+                  models: localModels,
+                },
+              ]}
               disabled={!canInput}
-              onValueChange={setSessionModelPin}
-            />
-          ) : undefined
-        }
-        thinkingSelector={
-          selectedModel?.supports_thinking ? (
-            <ThinkingSelect
-              value={sessionThinkingLevel}
-              configuredLevel={selectedModel.thinking_level}
-              defaultLevel={selectedModel.thinking_default_level}
-              levels={selectedModel.thinking_levels}
-              disabled={!canInput}
-              onValueChange={setSessionThinkingLevel}
+              onModelChange={setSessionModelPin}
+              thinking={
+                selectedModel?.supports_thinking
+                  ? {
+                      value: sessionThinkingLevel,
+                      configuredLevel: selectedModel.thinking_level,
+                      defaultLevel: selectedModel.thinking_default_level,
+                      levels: selectedModel.thinking_levels,
+                      onChange: setSessionThinkingLevel,
+                    }
+                  : null
+              }
             />
           ) : undefined
         }
