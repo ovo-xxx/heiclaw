@@ -107,7 +107,7 @@ function ProviderBadge({
 }) {
   const entry = getProviderCatalogEntry(provider, providerOptions)
   if (entry) {
-    return <ProviderIcon provider={entry} />
+    return <ProviderIcon provider={entry} plain />
   }
   return (
     <span className="border-border/60 bg-background flex size-4 shrink-0 items-center justify-center rounded-sm border text-[9px] font-semibold">

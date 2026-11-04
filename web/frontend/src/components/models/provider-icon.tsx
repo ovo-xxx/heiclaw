@@ -4,9 +4,11 @@ import type { ProviderCatalogEntry } from "./provider-registry"
 
 interface ProviderIconProps {
   provider: Pick<ProviderCatalogEntry, "key" | "label" | "iconSlug" | "domain">
+  /** No tile, border or padding: the logo fills the 16px box, for tight rows. */
+  plain?: boolean
 }
 
-export function ProviderIcon({ provider }: ProviderIconProps) {
+export function ProviderIcon({ provider, plain = false }: ProviderIconProps) {
   const [sourceIndex, setSourceIndex] = useState(0)
   const [loadFailed, setLoadFailed] = useState(false)
   const initial = provider.label.trim().charAt(0).toUpperCase() || "?"
@@ -34,7 +36,13 @@ export function ProviderIcon({ provider }: ProviderIconProps) {
   }
 
   return (
-    <span className="inline-flex size-4 shrink-0 items-center justify-center overflow-hidden rounded-sm border border-black/10 bg-white p-0.5 dark:border-white/20">
+    <span
+      className={
+        plain
+          ? "inline-flex size-4 shrink-0 items-center justify-center overflow-hidden"
+          : "inline-flex size-4 shrink-0 items-center justify-center overflow-hidden rounded-sm border border-black/10 bg-white p-0.5 dark:border-white/20"
+      }
+    >
       <img
         src={iconUrl}
         alt={`${provider.label} logo`}

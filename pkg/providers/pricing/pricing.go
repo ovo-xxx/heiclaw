@@ -200,10 +200,11 @@ var tables = map[string]Table{
 	},
 }
 
-// legacyModelNames maps identifiers that configs and stored turns still carry from
-// before a provider renamed a model onto the row that prices it. DeepSeek's flash
-// model was named deepseek-v4-flash before it became deepseek-flash; sessions written
-// under the old id keep that id in their stats, and their money must not disappear.
+// legacyModelNames maps identifiers that configs and stored turns still carry onto the
+// row that prices them. DeepSeek publishes a stable alias (deepseek-flash) that points
+// at whatever version is current, alongside versioned ids (deepseek-v4-flash). A config
+// should use the alias so a version bump needs no edit; turns written under a versioned
+// id keep that id in their stats, and their money must not disappear.
 var legacyModelNames = map[string]string{
 	"deepseek-v4-flash": "deepseek-flash",
 }

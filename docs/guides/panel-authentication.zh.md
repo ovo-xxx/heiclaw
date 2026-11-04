@@ -92,11 +92,15 @@ loopback 要求：终端只能经由 launcher 绑定的监听访问，所以如�
 自定义价全天适用，因为一个数没有高峰规则可依，面板会把该次调用标成自定义价目。没有对应
 价行的模型不显示价格表单，因为三个数字编不出一个币种。
 
-键名是**现行的上游模型标识**——配置条目里 `model:` 的值，不是用户选的 `model_name:` 别名。
+键名是**上游模型标识**——配置条目里 `model:` 的值，不是用户选的 `model_name:` 别名。
 `TableFor` 精确匹配（去掉 `provider/` 前缀后），所以 `deepseek-flash` 这行只对指向该标识的
-`flash` 别名计价。供应商改名时键名跟着改，旧标识写进 `legacyModelNames`——已存下的回合仍
-带着当初计费时的旧 id，不能因此丢掉金额；`pkg/providers/provider_metadata.go` 的
-`CommonModels` 是选择器给出的名字，两边都对不上时这一行只是安静地不再计价，任何地方都不
+`flash` 别名计价。
+
+优先用供应商的**稳定别名**，而不是带版本号的 id。DeepSeek 的 `deepseek-flash` 会一直指向当前
+版本，等 `deepseek-v5-flash` 上线时自动切过去；而 `deepseek-v4-flash` 这种版本 id 会把旧模型
+钉死。配置写稳定别名，版本升级就不用改配置、也不用改价目；价行也按同一个稳定名存。旧会话和
+统计里仍然带着的版本 id 放进 `legacyModelNames`，金额不会丢；`pkg/providers/provider_metadata.go`
+的 `CommonModels` 是选择器给出的名字，两边都对不上时这一行只是安静地不再计价，任何地方都不
 会报错。
 
 每行自带自己的高峰规则，或者不带：
