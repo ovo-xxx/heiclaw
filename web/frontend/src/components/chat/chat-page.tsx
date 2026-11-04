@@ -5,6 +5,7 @@ import {
   type ClipboardEvent,
   type DragEvent,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react"
@@ -35,6 +36,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { buildRenderItems } from "@/features/chat/activity-stream"
+import { displayModelName } from "@/features/chat/model-display"
 import {
   CHAT_IMAGE_ACCEPT,
   buildChatImageAttachments,
@@ -149,6 +151,10 @@ export function ChatPage() {
     oauthModels,
     localModels,
   } = useChatModels({ isConnected: isGatewayRunning })
+  const selectableModels = useMemo(
+    () => [...apiKeyModels, ...oauthModels, ...localModels],
+    [apiKeyModels, oauthModels, localModels],
+  )
   const [sessionModelPin, setSessionModelPin] = useAtom(sessionModelPinAtom)
   const hasDefaultModel = Boolean(defaultModelName)
   const inputDisabledReason = resolveChatInputDisabledReason({
@@ -401,7 +407,10 @@ export function ChatPage() {
                   <AssistantMessage
                     content={msg.content}
                     attachments={msg.attachments}
-                    modelName={msg.modelName}
+                    modelName={displayModelName(
+                      msg.modelName,
+                      selectableModels,
+                    )}
                     timestamp={msg.timestamp}
                     usage={msg.usage}
                     elapsedMs={elapsedMs}
