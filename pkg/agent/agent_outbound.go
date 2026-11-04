@@ -271,6 +271,11 @@ func (al *AgentLoop) publishPicoToolResultInterim(
 	if ts == nil || ts.chatID == "" || al == nil || al.bus == nil {
 		return
 	}
+	// Same gate as the announcement of the call itself: a row that was never
+	// published live must not settle live either.
+	if !ts.opts.AllowInterimPicoPublish {
+		return
+	}
 	if strings.TrimSpace(callID) == "" {
 		// Without a call id the panel cannot tell which row finished, so an
 		// interim record would blur the picture rather than sharpen it.
