@@ -53,7 +53,7 @@ func TestParseModelCapabilityOpenRouterShape(t *testing.T) {
 // A model that says nothing about reasoning is reported as not thinking, which is
 // what its own list says - the caller can still fall back to its own judgement.
 func TestParseModelCapabilityWithoutReasoning(t *testing.T) {
-	raw := json.RawMessage(`{"id": "meituan/longcat-flash-lite", "context_length": 256000}`)
+	raw := json.RawMessage(`{"id": "example/example-base", "context_length": 256000}`)
 	_, capability, ok := parseModelCapability(raw)
 	if !ok {
 		t.Fatal("entry should parse")

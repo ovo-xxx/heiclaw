@@ -29,13 +29,13 @@ type Table struct {
 	Source string
 }
 
-const deepSeekSource = "https://api-docs.deepseek.com/zh-cn/quick_start/pricing · 2026-11-04 取用"
+const deepSeekSource = "https://api-docs.deepseek.com/zh-cn/quick_start/pricing · read 2026-11-04"
 
 // tables is the DeepSeek row set as published on
 // https://api-docs.deepseek.com/zh-cn/quick_start/pricing, read 2026-11-04.
-// Prices are 元/百万 tokens. A new model or a price change means a new row here;
-// unknown models are priced as nothing rather than guessed at, and callers show
-// no cost for them.
+// Prices are CNY per million tokens. A new model or a price change means a new row
+// here; unknown models are priced as nothing rather than guessed at, and callers
+// show no cost for them.
 var tables = map[string]Table{
 	"deepseek-flash": {
 		Name:     "deepseek-flash",
