@@ -1,4 +1,4 @@
-import { IconTerminal2 } from "@tabler/icons-react"
+import { IconCheck, IconEye, IconTerminal2 } from "@tabler/icons-react"
 import { useSearch } from "@tanstack/react-router"
 import { useAtom } from "jotai"
 import {
@@ -27,12 +27,12 @@ import { TerminalDock } from "@/components/terminal/terminal-dock"
 import { useTerminalPanelToggle } from "@/components/terminal/use-terminal-panel"
 import { Button } from "@/components/ui/button"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   buildRenderItems,
   toolStatsForTurn,
@@ -350,45 +350,60 @@ export function ChatPage({ sessionId }: { sessionId?: string } = {}) {
   const canSubmit =
     canInput && (Boolean(input.trim()) || attachments.length > 0)
 
+  // The sidebar names a conversation after its first user message; the header shows
+  // the same, so the open conversation is identifiable without looking left.
+  const sessionTitle = useMemo(() => {
+    const firstUser = messages.find(
+      (message) => message.role === "user" && message.content.trim(),
+    )
+    const text = (firstUser?.content ?? "").replace(/\s+/g, " ").trim()
+    if (!text) {
+      return t("navigation.chat")
+    }
+    return text.length > 44 ? `${text.slice(0, 44)}…` : text
+  }, [messages, t])
+
   return (
     <div className="bg-background/95 flex h-full flex-col">
       <PageHeader
-        title={t("navigation.chat")}
+        title={sessionTitle}
         className={`transition-shadow ${
           hasScrolled ? "shadow-xs" : "shadow-none"
         }`}
-        titleExtra={null}
       >
-        <div className="border-border/60 hidden items-center gap-2 rounded-lg border px-3 py-1.5 sm:flex">
-          <span className="text-muted-foreground text-sm">
-            {t("chat.showAssistantDetails")}
-          </span>
-          <Select
-            value={assistantDetailVisibility}
-            onValueChange={(value) =>
-              setAssistantDetailVisibility(value as AssistantDetailVisibility)
-            }
-          >
-            <SelectTrigger
-              size="sm"
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-muted-foreground hover:text-foreground size-8"
               aria-label={t("chat.showAssistantDetails")}
-              className="text-muted-foreground hover:text-foreground focus-visible:border-input h-8 min-w-[104px] bg-transparent shadow-none focus-visible:ring-0"
+              title={t("chat.showAssistantDetails")}
             >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent align="end">
-              {assistantDetailVisibilityOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+              <IconEye className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>
+              {t("chat.showAssistantDetails")}
+            </DropdownMenuLabel>
+            {assistantDetailVisibilityOptions.map((option) => (
+              <DropdownMenuItem
+                key={option.value}
+                onClick={() => setAssistantDetailVisibility(option.value)}
+              >
+                <span className="flex-1">{option.label}</span>
+                {assistantDetailVisibility === option.value && (
+                  <IconCheck className="size-3.5 opacity-70" />
+                )}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <Button
-          variant="secondary"
-          size="sm"
+          variant="ghost"
+          size="icon"
           onClick={toggleTerminal}
           aria-pressed={terminalOpen}
           aria-label={t(
@@ -402,18 +417,13 @@ export function ChatPage({ sessionId }: { sessionId?: string } = {}) {
               : "pages.terminal.showPanel",
           )}
           className={cn(
-            "h-9 gap-2",
-            terminalOpen && "bg-muted text-foreground",
+            "size-8",
+            terminalOpen
+              ? "text-foreground"
+              : "text-muted-foreground hover:text-foreground",
           )}
         >
           <IconTerminal2 className="size-4" />
-          <span className="hidden sm:inline">
-            {t(
-              terminalOpen
-                ? "pages.terminal.hidePanel"
-                : "pages.terminal.showPanel",
-            )}
-          </span>
         </Button>
       </PageHeader>
 

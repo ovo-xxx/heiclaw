@@ -28,7 +28,7 @@ export function PageHeader({
           </SidebarTrigger>
           {/* The title keeps its own line on a phone: sharing one nowrap row with the
               action buttons squeezed 模型 into two stacked characters. */}
-          <h2 className="text-foreground/90 shrink-0 text-xl font-medium tracking-tight whitespace-nowrap">
+          <h2 className="text-foreground/90 min-w-0 truncate text-xl font-medium tracking-tight">
             {title}
           </h2>
           {titleExtra}
