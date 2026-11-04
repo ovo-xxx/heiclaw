@@ -100,7 +100,7 @@ function ActivityRowLine({
       : row.fallbackLabel
 
   return (
-    <div className="min-w-0">
+    <div className="group/row min-w-0">
       <div
         role="button"
         tabIndex={0}
@@ -138,7 +138,7 @@ function ActivityRowLine({
         )}
         <IconChevronDown
           className={cn(
-            "size-3 shrink-0 self-center opacity-0 transition-all group-hover:opacity-40",
+            "size-3 shrink-0 self-center opacity-0 transition-all group-hover/row:opacity-40",
             open && "rotate-180 opacity-40",
           )}
         />
