@@ -1,4 +1,3 @@
-import { IconChevronDown } from "@tabler/icons-react"
 import { useAtom, useSetAtom } from "jotai"
 import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
@@ -7,7 +6,6 @@ import { terminalManager } from "@/components/terminal/terminal-manager"
 import { subscribeTerminalTheme } from "@/components/terminal/terminal-theme"
 import { TerminalWorkspace } from "@/components/terminal/terminal-workspace"
 import { useTerminalTabs } from "@/components/terminal/use-terminal-tabs"
-import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
   TERMINAL_PANEL_MAX_VH,
@@ -96,11 +94,6 @@ export function TerminalDock() {
     setDragHeight(null)
   }
 
-  const collapse = () => {
-    setOpen(false)
-    setExpanded(false)
-  }
-
   const height =
     dragHeight !== null
       ? `${dragHeight}px`
@@ -135,19 +128,6 @@ export function TerminalDock() {
         </div>
 
         <TerminalWorkspace variant="dock" className="min-h-0 flex-1" />
-
-        <div className="border-border flex shrink-0 items-center justify-end gap-2 border-t px-2 py-0.5">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-xs"
-            onClick={collapse}
-            title={t("pages.terminal.hidePanel")}
-            aria-label={t("pages.terminal.hidePanel")}
-          >
-            <IconChevronDown className="size-4" />
-          </Button>
-        </div>
       </div>
     </section>
   )
