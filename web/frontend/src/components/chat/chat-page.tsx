@@ -18,10 +18,8 @@ import {
   type ChatInputDisabledReason,
 } from "@/components/chat/chat-composer"
 import { ChatEmptyState } from "@/components/chat/chat-empty-state"
-import {
-  FOLLOW_DEFAULT_MODEL,
-  ModelSelector,
-} from "@/components/chat/model-selector"
+import { ModelSelector } from "@/components/chat/model-selector"
+import { ThinkingSelect } from "@/components/chat/thinking-select"
 import { TypingIndicator } from "@/components/chat/typing-indicator"
 import { UserMessage } from "@/components/chat/user-message"
 import { PageHeader } from "@/components/page-header"
@@ -54,6 +52,7 @@ import type { ChatAttachment } from "@/store/chat"
 import {
   assistantDetailVisibilityAtom,
   sessionModelPinAtom,
+  sessionThinkingLevelAtom,
 } from "@/store/chat"
 import type { GatewayState } from "@/store/gateway"
 
@@ -156,6 +155,19 @@ export function ChatPage() {
     [apiKeyModels, oauthModels, localModels],
   )
   const [sessionModelPin, setSessionModelPin] = useAtom(sessionModelPinAtom)
+  const [sessionThinkingLevel, setSessionThinkingLevel] = useAtom(
+    sessionThinkingLevelAtom,
+  )
+  // A conversation always names one model: its pin, or the agent's default when it
+  // has none. There is no "follow" state left to display.
+  const selectedModelName = sessionModelPin ?? defaultModelName
+  const selectedModel = useMemo(
+    () =>
+      selectableModels.find(
+        (model) => model.model_name === selectedModelName,
+      ),
+    [selectableModels, selectedModelName],
+  )
   const hasDefaultModel = Boolean(defaultModelName)
   const inputDisabledReason = resolveChatInputDisabledReason({
     hasDefaultModel,
@@ -466,15 +478,22 @@ export function ChatPage() {
         modelSelector={
           hasAvailableModels ? (
             <ModelSelector
-              value={sessionModelPin ?? FOLLOW_DEFAULT_MODEL}
-              defaultModelName={defaultModelName}
+              value={selectedModelName}
               apiKeyModels={apiKeyModels}
               oauthModels={oauthModels}
               localModels={localModels}
               disabled={!canInput}
-              onValueChange={(next) =>
-                setSessionModelPin(next === FOLLOW_DEFAULT_MODEL ? null : next)
-              }
+              onValueChange={setSessionModelPin}
+            />
+          ) : undefined
+        }
+        thinkingSelector={
+          selectedModel?.supports_thinking ? (
+            <ThinkingSelect
+              value={sessionThinkingLevel}
+              configuredLevel={selectedModel.thinking_level}
+              disabled={!canInput}
+              onValueChange={setSessionThinkingLevel}
             />
           ) : undefined
         }

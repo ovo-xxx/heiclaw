@@ -112,6 +112,26 @@ export const sessionModelPinAtom = atom(
   },
 )
 export const isTypingAtom = atom((get) => get(chatAtom).isTyping)
+
+// Thinking effort is chosen per conversation and remembered here only: the gateway
+// takes it with each message, so there is no session field to read back. An empty
+// value means the model entry's own thinking_level still rules, and nothing is sent.
+export const THINKING_LEVELS_STORAGE_KEY = "picoclaw.chat.thinkingLevels"
+
+export const thinkingLevelsBySessionAtom = atomWithStorage<
+  Record<string, string>
+>(THINKING_LEVELS_STORAGE_KEY, {}, undefined, { getOnInit: true })
+
+export const sessionThinkingLevelAtom = atom(
+  (get) => get(thinkingLevelsBySessionAtom)[get(activeSessionIdAtom)] ?? "",
+  (get, set, value: string) => {
+    const sessionId = get(activeSessionIdAtom)
+    set(thinkingLevelsBySessionAtom, {
+      ...get(thinkingLevelsBySessionAtom),
+      [sessionId]: value,
+    })
+  },
+)
 export const assistantDetailVisibilityAtom =
   atomWithStorage<AssistantDetailVisibility>(
     ASSISTANT_DETAIL_VISIBILITY_STORAGE_KEY,

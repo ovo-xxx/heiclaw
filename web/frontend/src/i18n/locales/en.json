@@ -56,10 +56,14 @@
     "newChat": "New Chat",
     "notConnected": "Gateway is not running. Start it to chat.",
     "thinking": {
-      "step1": "Thinking...",
-      "step2": "Analyzing your request...",
-      "step3": "Preparing response...",
-      "step4": "Almost there..."
+      "label": "Thinking effort",
+      "configuredFallback": "Model default",
+      "level": {
+        "off": "Off",
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      }
     },
     "reasoningLabel": "Reasoning",
     "toolCallsLabel": "Tool calls",
@@ -143,7 +147,6 @@
       "earlier": "Earlier"
     },
     "noModel": "Select model",
-    "modelFollowDefault": "Follow default ({{model}})",
     "inputDisabled": {
       "notConnected": "Gateway is not running. Start it to chat.",
       "noModel": "No default model configured. Go to Models page to set one."

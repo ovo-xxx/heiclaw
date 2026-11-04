@@ -12,14 +12,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-/** Select item meaning "no per-conversation pin; use the agent's default". */
-export const FOLLOW_DEFAULT_MODEL = "__follow_default__"
-
 interface ModelSelectorProps {
-  /** Selected item: a model name, or FOLLOW_DEFAULT_MODEL. */
+  /** The model this conversation uses: always one of the listed aliases. */
   value: string
-  /** Shown when nothing is pinned, so the user sees what "默认" resolves to. */
-  defaultModelName: string
   apiKeyModels: ModelInfo[]
   oauthModels: ModelInfo[]
   localModels: ModelInfo[]
@@ -29,7 +24,6 @@ interface ModelSelectorProps {
 
 export function ModelSelector({
   value,
-  defaultModelName,
   apiKeyModels,
   oauthModels,
   localModels,
@@ -37,9 +31,10 @@ export function ModelSelector({
   onValueChange,
 }: ModelSelectorProps) {
   const { t } = useTranslation()
+  // A conversation can be pinned to a model that has since left the list; keeping
+  // it selectable is honest, replacing it with a guess is not.
   const rawDefaultModel =
     value &&
-    value !== FOLLOW_DEFAULT_MODEL &&
     ![...apiKeyModels, ...oauthModels, ...localModels].some(
       (model) => model.model_name === value,
     )
@@ -55,13 +50,6 @@ export function ModelSelector({
         <SelectValue placeholder={t("chat.noModel")} />
       </SelectTrigger>
       <SelectContent position="popper" align="start">
-        <SelectItem value={FOLLOW_DEFAULT_MODEL}>
-          {t("chat.modelFollowDefault", { model: defaultModelName })}
-        </SelectItem>
-        {(apiKeyModels.length > 0 ||
-          oauthModels.length > 0 ||
-          localModels.length > 0 ||
-          rawDefaultModel) && <SelectSeparator />}
         {rawDefaultModel && (
           <SelectItem value={rawDefaultModel}>{rawDefaultModel}</SelectItem>
         )}

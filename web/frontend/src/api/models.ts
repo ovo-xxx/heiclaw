@@ -19,6 +19,9 @@ export interface ModelInfo {
   max_tokens_field?: string
   request_timeout?: number
   thinking_level?: string
+  // Whether the provider behind this entry would honour a thinking effort. The
+  // composer only offers the control when this is true.
+  supports_thinking?: boolean
   tool_schema_transform?: string
   streaming?: {
     enabled?: boolean

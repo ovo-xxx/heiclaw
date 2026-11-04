@@ -16,6 +16,7 @@ import i18n from "@/i18n"
 import {
   type ChatAttachment,
   getChatState,
+  sessionThinkingLevelAtom,
   updateChatStore,
 } from "@/store/chat"
 import { type GatewayState, gatewayAtom } from "@/store/gateway"
@@ -360,13 +361,16 @@ export function sendChatMessage({
   }))
 
   try {
+    const thinkingLevel = store.get(sessionThinkingLevelAtom)?.trim() ?? ""
     const payload: Record<string, unknown> = {
       content: normalizedContent,
       media: normalizedAttachments.map((attachment) => attachment.url),
-      // Always stated so the session's pin is authoritative: the name when the
-      // conversation pins one, empty to follow the agent's default and clear any
-      // stale pin the gateway still holds.
+      // Always stated so the session's model is authoritative: the conversation
+      // names one model, and the gateway records it as the pin for this session.
       model_name: getChatState().sessionModelPin ?? "",
+      // Stated only when the user chose an effort; otherwise the model entry's own
+      // thinking_level still rules and nothing extra is sent.
+      ...(thinkingLevel ? { thinking_level: thinkingLevel } : {}),
     }
 
     socket.send(
