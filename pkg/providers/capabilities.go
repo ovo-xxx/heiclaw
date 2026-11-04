@@ -33,9 +33,22 @@ type ModelCapability struct {
 // rarely and the panel asks on every load.
 const capabilityCacheTTL = 10 * time.Minute
 
+// capabilityFailureTTL is how long an unreadable endpoint is remembered as unreadable.
+// Without it, a panel with twenty cloud providers and no keys re-asked all of them on
+// every request and paid the full timeout each time.
+const capabilityFailureTTL = 60 * time.Second
+
+// capabilityWaitBudget bounds how long a caller waits for a fetch it did not start.
+// A provider that is slow to answer must not hold up the whole model list: the
+// fallback judgement in the caller is better than a panel that renders nothing.
+const capabilityWaitBudget = 700 * time.Millisecond
+
+const capabilityFetchTimeout = 5 * time.Second
+
 type capabilityEntry struct {
 	expires time.Time
-	models  map[string]ModelCapability
+	// models is nil for a known-unreadable endpoint; a parsed list is never nil.
+	models map[string]ModelCapability
 }
 
 var (
@@ -65,49 +78,73 @@ func LookupModelCapability(ctx context.Context, mc *config.ModelConfig) (ModelCa
 	return capability, found
 }
 
-// capabilityModels returns the parsed model list for one endpoint, fetching it at
-// most once per TTL. Concurrent callers wait for the single in-flight fetch.
+// capabilityModels returns the parsed model list for one endpoint. A fresh cache entry
+// answers immediately; otherwise one fetch runs per endpoint, detached from the
+// caller's context so a request that gives up still fills the cache for the next one.
 func capabilityModels(ctx context.Context, base, apiKey string) (map[string]ModelCapability, bool) {
-	capabilityMu.Lock()
-	if entry, ok := capabilityCache[base]; ok && time.Now().Before(entry.expires) {
-		capabilityMu.Unlock()
-		return entry.models, true
+	if ctx == nil {
+		ctx = context.Background()
 	}
-	if wait, ok := capabilityInFlight[base]; ok {
-		capabilityMu.Unlock()
+
+	capabilityMu.Lock()
+	entry, known := capabilityCache[base]
+	fresh := known && time.Now().Before(entry.expires)
+	if !fresh {
+		if _, running := capabilityInFlight[base]; !running {
+			done := make(chan struct{})
+			capabilityInFlight[base] = done
+			go refreshCapabilities(base, apiKey, done)
+		}
+	}
+	capabilityMu.Unlock()
+
+	if fresh {
+		return entry.models, entry.models != nil
+	}
+
+	wait := func() chan struct{} {
+		capabilityMu.Lock()
+		defer capabilityMu.Unlock()
+		return capabilityInFlight[base]
+	}()
+	if wait != nil {
 		select {
 		case <-wait:
 		case <-ctx.Done():
 			return nil, false
-		case <-time.After(6 * time.Second):
+		case <-time.After(capabilityWaitBudget):
 			return nil, false
 		}
-		capabilityMu.Lock()
-		entry, ok := capabilityCache[base]
-		capabilityMu.Unlock()
-		return entry.models, ok
 	}
-	done := make(chan struct{})
-	capabilityInFlight[base] = done
-	capabilityMu.Unlock()
-
-	models, ok := fetchCapabilities(ctx, base, apiKey)
 
 	capabilityMu.Lock()
-	if ok {
-		capabilityCache[base] = capabilityEntry{
-			expires: time.Now().Add(capabilityCacheTTL),
-			models:  models,
-		}
+	defer capabilityMu.Unlock()
+	if entry, ok := capabilityCache[base]; ok && time.Now().Before(entry.expires) {
+		return entry.models, entry.models != nil
 	}
+	return nil, false
+}
+
+// refreshCapabilities stores the outcome either way: a list when the endpoint spoke,
+// a short-lived negative entry when it did not.
+func refreshCapabilities(base, apiKey string, done chan struct{}) {
+	models, ok := fetchCapabilities(context.Background(), base, apiKey)
+
+	capabilityMu.Lock()
+	expires := time.Now().Add(capabilityFailureTTL)
+	if ok {
+		expires = time.Now().Add(capabilityCacheTTL)
+	} else {
+		models = nil
+	}
+	capabilityCache[base] = capabilityEntry{expires: expires, models: models}
 	delete(capabilityInFlight, base)
 	capabilityMu.Unlock()
 	close(done)
-	return models, ok
 }
 
 func fetchCapabilities(ctx context.Context, base, apiKey string) (map[string]ModelCapability, bool) {
-	reqCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	reqCtx, cancel := context.WithTimeout(ctx, capabilityFetchTimeout)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, base+"/models", nil)
