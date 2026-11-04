@@ -50,14 +50,16 @@ export function ContextUsageRing({
   }
 
   // Desktop: hover to open, and leave closes after a short grace so crossing the
-  // gap between the ring and the card does not flicker it away.
+  // gap between the ring and the card does not flicker it away. The card carries the
+  // same handlers: it is portalled, so without them leaving the trigger closed the
+  // card while the pointer was on its way to 查看详情.
   const handleMouseEnter = () => {
     if (closeTimer.current) clearTimeout(closeTimer.current)
     setOpen(true)
   }
 
   const handleMouseLeave = () => {
-    closeTimer.current = setTimeout(() => setOpen(false), 150)
+    closeTimer.current = setTimeout(() => setOpen(false), 250)
   }
 
   // Touch: preventDefault keeps the synthetic mouseenter from fighting the tap,
@@ -113,6 +115,8 @@ export function ContextUsageRing({
         align="end"
         sideOffset={8}
         onOpenAutoFocus={(event) => event.preventDefault()}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
         className="w-[220px] rounded-xl p-4"
       >
         <div className="flex items-center justify-between">
