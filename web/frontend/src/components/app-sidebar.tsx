@@ -8,8 +8,7 @@ import {
   IconLanguage,
   IconListDetails,
   IconLogout,
-  IconMessages,
-  IconRobot,
+  IconLayoutGrid,
   IconSettings,
   IconSunMoon,
   IconTerminal2,
@@ -20,6 +19,7 @@ import { useTranslation } from "react-i18next"
 
 import { postLauncherDashboardLogout } from "@/api/launcher-auth"
 import { ConversationList } from "@/components/chat/conversation-list"
+import { ConversationSearch } from "@/components/chat/conversation-search"
 import { Sidebar, SidebarRail, useSidebar } from "@/components/ui/sidebar"
 import {
   DropdownMenu,
@@ -42,13 +42,12 @@ import { cn } from "@/lib/utils"
 // more later) opens as a submenu that replaces this column, with 返回 as its first row.
 
 const primaryNav = [
-  { key: "chat", labelKey: "navigation.chat", url: "/", icon: IconMessages },
   { key: "model", labelKey: "navigation.model_group", url: "/models", icon: IconAtom },
   {
     key: "agent",
-    labelKey: "navigation.agent_group",
+    labelKey: "navigation.hub",
     url: "/agent/hub",
-    icon: IconRobot,
+    icon: IconLayoutGrid,
   },
 ] as const
 
@@ -83,37 +82,42 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
     >
       {view === "main" ? (
         <>
-          <div className="flex shrink-0 flex-col gap-1 px-2 pb-1 pt-[max(0.75rem,env(safe-area-inset-top))] md:pt-3">
-            <div className="mb-1 flex h-8 shrink-0 items-center px-2">
+          <div className="flex shrink-0 flex-col pt-[max(0.75rem,env(safe-area-inset-top))] md:pt-3">
+            <div className="mb-1 flex h-8 shrink-0 items-center px-4">
               <Link to="/" onClick={closeDrawer} aria-label="PicoClaw">
                 <img className="h-5" src="/logo_with_text.png" alt="PicoClaw" />
               </Link>
             </div>
-            {primaryNav.map((item) => {
-              const Icon = item.icon
-              const isActive = activeCategory === item.key
-              return (
-                <Link
-                  key={item.key}
-                  to={item.url}
-                  onClick={closeDrawer}
-                  aria-current={isActive ? "page" : undefined}
-                  data-tour={item.key === "model" ? "models-nav" : undefined}
-                  className={cn(
-                    // 36px rows with a 20px icon, the geometry the ChatGPT sidebar uses.
-                    "flex h-9 items-center gap-3 rounded-[10px] px-2.5 text-sm transition-colors",
-                    isActive
-                      ? "bg-accent text-accent-foreground font-medium"
-                      : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
-                  )}
-                >
-                  <Icon
-                    className={cn("size-5", isActive ? "opacity-100" : "opacity-60")}
-                  />
-                  <span className="truncate">{t(item.labelKey)}</span>
-                </Link>
-              )
-            })}
+            {/* New chat and search sit under the logo, the way the ChatGPT sidebar
+                orders them; the list they drive is rendered below the navigation. */}
+            <ConversationSearch />
+            <div className="flex flex-col gap-1 px-2 pb-1">
+              {primaryNav.map((item) => {
+                const Icon = item.icon
+                const isActive = activeCategory === item.key
+                return (
+                  <Link
+                    key={item.key}
+                    to={item.url}
+                    onClick={closeDrawer}
+                    aria-current={isActive ? "page" : undefined}
+                    data-tour={item.key === "model" ? "models-nav" : undefined}
+                    className={cn(
+                      // 36px rows with a 20px icon, the geometry the ChatGPT sidebar uses.
+                      "flex h-9 items-center gap-3 rounded-[10px] px-2.5 text-sm transition-colors",
+                      isActive
+                        ? "bg-accent text-accent-foreground font-medium"
+                        : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+                    )}
+                  >
+                    <Icon
+                      className={cn("size-5", isActive ? "opacity-100" : "opacity-60")}
+                    />
+                    <span className="truncate">{t(item.labelKey)}</span>
+                  </Link>
+                )
+              })}
+            </div>
           </div>
 
           <div aria-hidden className="bg-border/60 mx-3 h-px shrink-0" />

@@ -1,7 +1,7 @@
-import { IconPlus, IconSearch, IconTrash, IconX } from "@tabler/icons-react"
+import { IconTrash } from "@tabler/icons-react"
 import { useNavigate } from "@tanstack/react-router"
 import dayjs from "dayjs"
-import { useAtomValue } from "jotai"
+import { useAtom, useAtomValue } from "jotai"
 import * as React from "react"
 import { useTranslation } from "react-i18next"
 
@@ -10,12 +10,9 @@ import {
   type SessionSummary,
   searchSessions,
 } from "@/api/sessions"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import {
   SidebarGroup,
   SidebarGroupContent,
-  SidebarHeader,
   SidebarMenu,
   SidebarMenuAction,
   SidebarMenuButton,
@@ -25,7 +22,11 @@ import {
 import { newChatSession, switchChatSession } from "@/features/chat/controller"
 import { useSessionHistory } from "@/hooks/use-session-history"
 import { cn } from "@/lib/utils"
-import { activeSessionIdAtom, isTypingAtom } from "@/store/chat"
+import {
+  activeSessionIdAtom,
+  conversationQueryAtom,
+  isTypingAtom,
+} from "@/store/chat"
 
 type ConversationGroupId = "today" | "yesterday" | "last7days" | "earlier"
 
@@ -62,7 +63,7 @@ export function ConversationList() {
   const { isMobile, setOpenMobile } = useSidebar()
   const activeSessionId = useAtomValue(activeSessionIdAtom)
   const navigate = useNavigate()
-  const [query, setQuery] = React.useState("")
+  const [query] = useAtom(conversationQueryAtom)
   const [contentMatches, setContentMatches] =
     React.useState<SessionSearchMatch[] | null>(null)
   const [searching, setSearching] = React.useState(false)
@@ -192,50 +193,9 @@ export function ConversationList() {
     [isMobile, navigate, setOpenMobile],
   )
 
-  const handleNewChat = React.useCallback(() => {
-    void newChatSession()
-    navigate({ to: "/" })
-    if (isMobile) {
-      setOpenMobile(false)
-    }
-  }, [isMobile, navigate, setOpenMobile])
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <SidebarHeader className="gap-2 px-3 pt-2 pb-2">
-        <Button
-          size="sm"
-          onClick={handleNewChat}
-          className="h-9 w-full justify-center gap-2"
-        >
-          <IconPlus className="size-4" />
-          <span>{t("chat.newChat")}</span>
-        </Button>
-
-        <div className="relative">
-          <IconSearch className="text-muted-foreground pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 opacity-70" />
-          <Input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={t("chat.searchConversations")}
-            aria-label={t("chat.searchConversations")}
-            className="border-border/60 h-9 bg-transparent pr-8 pl-8 text-sm"
-          />
-          {query && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-xs"
-              aria-label={t("chat.clearSearch")}
-              onClick={() => setQuery("")}
-              className="text-muted-foreground hover:text-foreground absolute top-1/2 right-1 -translate-y-1/2"
-            >
-              <IconX className="size-3.5" />
-            </Button>
-          )}
-        </div>
-      </SidebarHeader>
-
       <div
         role="navigation"
         aria-label={t("chat.conversations")}

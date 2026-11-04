@@ -126,6 +126,9 @@ export const chatAtom = atom<ChatStoreState>(DEFAULT_CHAT_STATE)
 // Derived so sidebar consumers only re-render on session changes, not on every
 // streamed message token.
 export const activeSessionIdAtom = atom((get) => get(chatAtom).activeSessionId)
+// The conversation search box lives in the sidebar above the navigation, while the
+// list it filters is rendered below it, so the query is shared through an atom.
+export const conversationQueryAtom = atom("")
 export const sessionModelPinAtom = atom(
   (get) => get(chatAtom).sessionModelPin,
   (_get, _set, value: string | null) => {
