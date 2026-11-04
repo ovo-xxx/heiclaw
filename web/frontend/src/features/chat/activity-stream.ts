@@ -139,12 +139,22 @@ export interface ActivityRow {
 
 // A row is one thing the turn did: a stretch of reasoning, or one tool call. Tool
 // calls carry their own duration and outcome, matched to the turn record by the
-// provider's call id.
+// provider's call id. Interim per-call results (announced the moment a call
+// finishes) win over the turn's final stats so a running row settles as soon as
+// the backend says so instead of waiting for the answer.
 export function buildActivityRows(
   messages: ChatMessage[],
   toolStats: TurnToolStat[] = [],
 ): ActivityRow[] {
   const rows: ActivityRow[] = []
+  const interim = new Map<string, TurnToolStat>()
+  for (const message of messages) {
+    for (const record of message.toolResults ?? []) {
+      if (record.call_id) {
+        interim.set(record.call_id, record)
+      }
+    }
+  }
 
   for (const message of messages) {
     const kind = message.kind ?? "normal"
@@ -186,6 +196,7 @@ export function buildActivityRows(
         return
       }
       const record: TurnToolStat | undefined =
+        (toolCall.id ? interim.get(toolCall.id) : undefined) ??
         (toolCall.id ? byCallId.get(toolCall.id) : undefined) ??
         (unclaimed[callIndex]?.name === name ? unclaimed[callIndex] : undefined)
       const activity = toolActivity(name)

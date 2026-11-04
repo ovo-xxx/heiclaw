@@ -1,79 +1,131 @@
-import { html } from "diff2html"
-import "diff2html/bundles/css/diff2html.min.css"
-import { useMemo } from "react"
+import { IconChevronRight } from "@tabler/icons-react"
+import { useState } from "react"
 import { useTranslation } from "react-i18next"
 
-import { useTheme } from "@/hooks/use-theme"
+// git-diff-view renders the unified diff hunks produced by the backend
+// (pkg/tools/shared/diff_result.go) natively as a React tree. The library's
+// DiffView does not include a file header (no file name / +/- counts), so we
+// draw our own and stack the diff table below it.
+//
+// Theme switching: the library's internal initTheme effect does not notify
+// subscribers when the theme prop changes on an already-initialised DiffFile
+// (initRaw / build* are no-ops because their has* flags are already set).
+// Forcing a remount via key={theme} sidesteps that — the trade-off is the diff
+// re-parses on every theme flip, which is cheap for chat-sized diffs.
+import { DiffModeEnum, DiffView } from "@git-diff-view/react"
+import "@git-diff-view/react/styles/diff-view.css"
+
+import { useHtmlTheme } from "@/hooks/use-theme"
 import { cn } from "@/lib/utils"
 
-// The unified diff the tools produce is handed to diff2html rather than painted by
-// hand: it colours added, removed and word-level changed text the way the code
-// review UIs people already know do. Its own file header is hidden because the path
-// and the line counts are drawn above, once per file.
-//
-// Content safety is not assumed here: the library escapes the diff body, so a file
-// containing markup cannot inject it into the panel.
+// A turn that touched several files, or one file with a long diff, starts folded so
+// the answer is not pushed off the screen; a small edit opens straight away.
+const FOLD_AFTER_FILES = 4
+const FOLD_AFTER_LINES = 60
+
+export function diffOpensByDefault(fileCount: number, changedLines: number): boolean {
+  return fileCount <= FOLD_AFTER_FILES && changedLines <= FOLD_AFTER_LINES
+}
+
 export function FileDiff({
   path,
   diff,
   additions,
   deletions,
+  hunks,
+  oldPath,
+  newPath,
+  fileLang,
+  binary,
+  defaultOpen = true,
 }: {
   path: string
-  diff: string
+  diff?: string
   additions: number
   deletions: number
+  hunks?: string[]
+  oldPath?: string
+  newPath?: string
+  fileLang?: string
+  binary?: boolean
+  defaultOpen?: boolean
 }) {
   const { t } = useTranslation()
-  const { theme } = useTheme()
+  const theme = useHtmlTheme()
+  const [open, setOpen] = useState(defaultOpen)
 
-  const markup = useMemo(() => {
-    if (!diff.trim()) {
-      return ""
-    }
-    return html(diff, {
-      outputFormat: "line-by-line",
-      drawFileList: false,
-      matching: "lines",
-    })
-  }, [diff])
+  const hasHunks = hunks !== undefined && hunks.length > 0
+  const name = newPath ?? path
 
   return (
     <div
       className={cn(
         "border-border/60 bg-card overflow-hidden rounded-xl border text-[12px]",
-        "[--d2h-bg-color:var(--card)] [--d2h-border-color:var(--border)]",
-        "[--d2h-file-header-bg-color:var(--muted)] [--d2h-info-bg-color:var(--muted)]",
-        // The library's own dark palette is selected by a class on the wrapper.
-        theme === "dark" && "d2h-dark-color-scheme",
       )}
     >
-      <div className="border-border/60 text-muted-foreground/80 flex items-baseline justify-between gap-2 border-b px-3 py-1.5">
-        <span className="min-w-0 truncate font-mono text-[11px]">{path}</span>
-        <span className="shrink-0 text-[11px] tabular-nums">
+      {/* File header — the library does not ship one, so we draw the path
+          and +/- counts ourselves, matching the card style we had before. It is
+          the fold control: the counts stay readable while the body is hidden, and
+          the diff is only parsed once the file is opened. */}
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+        aria-label={name}
+        className={cn(
+          "text-muted-foreground/80 hover:text-foreground flex w-full items-baseline gap-2 px-3 py-1.5 text-left",
+          open && "border-border/60 border-b",
+        )}
+      >
+        <IconChevronRight
+          className={cn(
+            "size-3 shrink-0 self-center transition-transform",
+            open && "rotate-90",
+          )}
+        />
+        <span className="min-w-0 truncate font-mono text-[11px]">{name}</span>
+        <span className="ml-auto shrink-0 text-[11px] tabular-nums">
           <span className="text-emerald-600 dark:text-emerald-400">
             +{additions}
           </span>{" "}
           <span className="text-red-600 dark:text-red-400">-{deletions}</span>
         </span>
-      </div>
+      </button>
 
-      {markup ? (
-        // Long lines scroll inside the card; without this the table widened the page
-        // and the diff ran off the bottom of the layout. The inner box keeps its
-        // natural width and a floor of 100%, so the two number columns never collapse
-        // to nothing when the pane is narrow.
-        <div className="overflow-x-auto">
-          <div
-            className="w-max min-w-full [&_.d2h-code-line]:font-mono [&_.d2h-code-linenumber]:w-[1%] [&_.d2h-code-linenumber]:whitespace-nowrap [&_.d2h-file-header]:hidden [&_.d2h-file-wrapper]:m-0 [&_.d2h-file-wrapper]:rounded-none [&_.d2h-file-wrapper]:border-0 [&_.line-num1]:min-w-[2.5rem] [&_.line-num2]:min-w-[2.5rem]"
-            dangerouslySetInnerHTML={{ __html: markup }}
+      {open &&
+        (hasHunks ? (
+          <DiffView
+            key={theme}
+            data={{
+              oldFile: {
+                fileName: oldPath ?? path,
+                fileLang: fileLang ?? null,
+                content: null,
+              },
+              newFile: {
+                fileName: newPath ?? path,
+                fileLang: fileLang ?? null,
+                content: null,
+              },
+              hunks: hunks!,
+            }}
+            diffViewMode={DiffModeEnum.Unified}
+            diffViewTheme={theme === "dark" ? "dark" : "light"}
+            diffViewHighlight
           />
-        </div>
-      ) : (
-        <div className="text-muted-foreground/60 px-3 py-2 text-[11px]">
-          {t("chat.diffEmpty")}
-        </div>
-      )}
+        ) : binary ? (
+          <div className="text-muted-foreground/60 px-3 py-2 text-[11px]">
+            {t("chat.diffBinary")}
+          </div>
+        ) : diff && diff.trim() ? (
+          <pre className="text-muted-foreground/90 max-h-[24rem] overflow-auto px-3 py-2 font-mono text-[11px] whitespace-pre-wrap">
+            {diff}
+          </pre>
+        ) : (
+          <div className="text-muted-foreground/60 px-3 py-2 text-[11px]">
+            {t("chat.diffEmpty")}
+          </div>
+        ))}
     </div>
   )
 }

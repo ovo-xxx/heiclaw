@@ -191,25 +191,38 @@ function parseLLMCalls(raw: unknown): TurnLLMCallStat[] | undefined {
   return calls.length > 0 ? calls : undefined
 }
 
+function parseToolStatItem(raw: unknown): TurnToolStat | undefined {
+  const obj = toRecord(raw)
+  const name = obj ? toText(obj.name) : undefined
+  if (!obj || !name) {
+    return undefined
+  }
+  return {
+    name,
+    call_id: toText(obj.call_id),
+    ok: obj.ok !== false,
+    duration_ms: toNumber(obj.duration_ms),
+  }
+}
+
 function parseToolStats(raw: unknown): TurnToolStat[] | undefined {
   if (!Array.isArray(raw)) {
     return undefined
   }
   const tools: TurnToolStat[] = []
   for (const item of raw) {
-    const obj = toRecord(item)
-    const name = obj ? toText(obj.name) : undefined
-    if (!obj || !name) {
-      continue
+    const tool = parseToolStatItem(item)
+    if (tool) {
+      tools.push(tool)
     }
-    tools.push({
-      name,
-      call_id: toText(obj.call_id),
-      ok: obj.ok !== false,
-      duration_ms: toNumber(obj.duration_ms),
-    })
   }
   return tools.length > 0 ? tools : undefined
+}
+
+// The interim "tool_results" frame carries the same Go ToolStat shape as the
+// turn's final stats, one record per finished call.
+export function parseToolStatRecord(raw: unknown): TurnToolStat | undefined {
+  return parseToolStatItem(raw)
 }
 
 function parseTurnContextUsage(raw: unknown): TurnContextUsage | undefined {

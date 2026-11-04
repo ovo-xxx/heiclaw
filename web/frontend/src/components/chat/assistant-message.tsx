@@ -147,9 +147,14 @@ export function AssistantMessage({
               <FileDiff
                 key={`${change.path}`}
                 path={change.path}
-                diff={change.diff ?? ""}
+                diff={change.diff}
                 additions={change.additions}
                 deletions={change.deletions}
+                hunks={change.hunks}
+                oldPath={change.oldPath}
+                newPath={change.newPath}
+                fileLang={change.fileLang}
+                binary={change.binary}
               />
             ))}
         </div>

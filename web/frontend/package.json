@@ -18,6 +18,8 @@
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",
+    "@git-diff-view/lowlight": "^0.1.8",
+    "@git-diff-view/react": "^0.1.8",
     "@radix-ui/react-popover": "^1.1.15",
     "@tabler/icons-react": "^3.43.0",
     "@tailwindcss/vite": "^4.3.0",
@@ -30,7 +32,6 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "dayjs": "^1.11.20",
-    "diff2html": "^3.4.56",
     "highlight.js": "^11.11.1",
     "i18next": "^26.0.10",
     "i18next-browser-languagedetector": "^8.2.1",

@@ -5,7 +5,7 @@ import {
   parseAssistantMessageUpdateState,
 } from "@/features/chat/assistant-message-state"
 import { normalizeUnixTimestamp } from "@/features/chat/state"
-import { parseTurnStats } from "@/features/chat/turn-stats"
+import { parseTurnStats, parseToolStatRecord } from "@/features/chat/turn-stats"
 import {
   type ChatAttachment,
   type ContextUsage,
@@ -114,11 +114,25 @@ function parseFileChanges(
     if (!path) {
       continue
     }
+    const hunks = Array.isArray(change.hunks)
+      ? change.hunks.filter((h): h is string => typeof h === "string")
+      : undefined
     changes.push({
       path,
       ...(typeof change.diff === "string" ? { diff: change.diff } : {}),
       additions: Number(change.additions) || 0,
       deletions: Number(change.deletions) || 0,
+      ...(hunks && hunks.length > 0 ? { hunks } : {}),
+      ...(typeof change.old_path === "string" && change.old_path
+        ? { oldPath: change.old_path }
+        : {}),
+      ...(typeof change.new_path === "string" && change.new_path
+        ? { newPath: change.new_path }
+        : {}),
+      ...(typeof change.file_lang === "string" && change.file_lang
+        ? { fileLang: change.file_lang }
+        : {}),
+      ...(change.binary === true ? { binary: true } : {}),
     })
   }
 
@@ -149,6 +163,65 @@ function parseTurnUsage(
   }
 }
 
+// The backend announces every finished tool call as its own frame the moment the
+// call returns (pkg/channels/pico: a message.create whose kind is "tool_results").
+// It is not a row of its own: the record belongs to the call announced earlier in
+// the turn, so the feed can settle that row - outcome and duration - while the turn
+// is still running, instead of waiting for the answer's turn_stats.
+function isToolResultsFrame(payload: Record<string, unknown>): boolean {
+  return (
+    typeof payload.kind === "string" &&
+    payload.kind.trim().toLowerCase() === "tool_results"
+  )
+}
+
+function applyInterimToolResults(payload: Record<string, unknown>): void {
+  const rawResults = payload.tool_results
+  if (!Array.isArray(rawResults) || rawResults.length === 0) {
+    return
+  }
+  const results = rawResults
+    .map((item) => parseToolStatRecord(item))
+    .filter((item): item is NonNullable<typeof item> => item !== undefined)
+  if (results.length === 0) {
+    return
+  }
+
+  updateChatStore((prev) => {
+    let toolCallsIndex = -1
+    for (let i = prev.messages.length - 1; i >= 0; i -= 1) {
+      const msg = prev.messages[i]
+      if (msg.role === "user") {
+        break
+      }
+      if (msg.kind === "tool_calls") {
+        toolCallsIndex = i
+        break
+      }
+    }
+    if (toolCallsIndex < 0) {
+      return {}
+    }
+
+    const target = prev.messages[toolCallsIndex]
+    const merged = [...(target.toolResults ?? [])]
+    for (const result of results) {
+      const existing = result.call_id
+        ? merged.findIndex((item) => item.call_id === result.call_id)
+        : -1
+      if (existing >= 0) {
+        merged[existing] = result
+      } else {
+        merged.push(result)
+      }
+    }
+
+    const messages = [...prev.messages]
+    messages[toolCallsIndex] = { ...target, toolResults: merged }
+    return { messages }
+  })
+}
+
 export function handlePicoMessage(
   message: PicoMessage,
   expectedSessionId: string,
@@ -162,6 +235,10 @@ export function handlePicoMessage(
   switch (message.type) {
     case "message.create":
     case "media.create": {
+      if (isToolResultsFrame(payload)) {
+        applyInterimToolResults(payload)
+        break
+      }
       const messageId = (payload.message_id as string) || `pico-${Date.now()}`
       const { content, kind, toolCalls } =
         parseAssistantMessageCreateState(payload)

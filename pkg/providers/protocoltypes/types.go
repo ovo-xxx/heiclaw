@@ -282,11 +282,35 @@ type TurnStats struct {
 
 // FileChange describes one file a turn modified. Diff is a unified diff capped by
 // the tool that produced it; Additions/Deletions count changed lines.
+//
+// Hunks/OldPath/NewPath/FileLang/Binary are the structured form of the same diff,
+// intended for rich diff view components (git-diff-view) that take hunks arrays
+// rather than a pre-rendered diff string. Diff (the string) stays for the LLM
+// context and the markdown message panel.
 type FileChange struct {
 	Path      string `json:"path"`
 	Diff      string `json:"diff,omitempty"`
 	Additions int    `json:"additions"`
 	Deletions int    `json:"deletions"`
+
+	// OldPath/NewPath are the a/ and b/ names from the diff header; for plain
+	// edits both equal Path, for renames they differ. Empty when the diff could
+	// not be produced (e.g. file too large).
+	OldPath string `json:"old_path,omitempty"`
+	NewPath string `json:"new_path,omitempty"`
+
+	// Hunks is the list of unified diff hunks (each starting with "@@"),
+	// truncated at hunk boundaries so the renderer never sees a half hunk.
+	// Empty when the diff was skipped or unavailable.
+	Hunks []string `json:"hunks,omitempty"`
+
+	// FileLang is the lowlight/highlight.js language id inferred from the
+	// extension (e.g. "go", "typescript", "python"), empty when unknown.
+	FileLang string `json:"file_lang,omitempty"`
+
+	// Binary marks a change where the content is not text (the tool layer skips
+	// diffing in that case, so Hunks will be empty).
+	Binary bool `json:"binary,omitempty"`
 }
 
 // CacheControl marks a content block for LLM-side prefix caching.

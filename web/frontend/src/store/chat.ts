@@ -1,7 +1,11 @@
 import { atom, getDefaultStore } from "jotai"
 import { atomWithStorage } from "jotai/utils"
 
-import type { TurnContextUsage, TurnStats } from "@/api/sessions"
+import type {
+  TurnContextUsage,
+  TurnStats,
+  TurnToolStat,
+} from "@/api/sessions"
 import {
   ASSISTANT_DETAIL_VISIBILITY_STORAGE_KEY,
   type AssistantDetailVisibility,
@@ -50,6 +54,13 @@ export interface ChatMessage {
   fileChanges?: TurnFileChange[]
   attachments?: ChatAttachment[]
   toolCalls?: ChatToolCall[]
+  /**
+   * Per-call records the backend announces the moment each tool finishes
+   * (kind "tool_results"), merged onto the turn's tool_calls block so a row
+   * settles while the turn is still running instead of waiting for the
+   * answer's turn_stats.
+   */
+  toolResults?: TurnToolStat[]
 }
 
 export interface TurnUsage {
@@ -63,6 +74,16 @@ export interface TurnFileChange {
   diff?: string
   additions: number
   deletions: number
+  /**
+   * Structured hunks (each starting with "@@") produced by the backend. When
+   * present, the chat panel renders them through @git-diff-view/react instead
+   * of falling back to the raw `diff` string.
+   */
+  hunks?: string[]
+  oldPath?: string
+  newPath?: string
+  fileLang?: string
+  binary?: boolean
 }
 
 // The live "context_usage" WebSocket payload and the snapshot inside

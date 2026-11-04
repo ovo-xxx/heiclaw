@@ -4,6 +4,12 @@
 @import "@fontsource-variable/inter";
 @plugin "@tailwindcss/typography";
 
+/* @git-diff-view/react ships its row layout as Tailwind utility classes inside
+   its dist bundle; Tailwind v4 only scans project sources by default, so we
+   have to opt its dist in. Without this the diff renders as a bare stack of
+   lines — no sticky line numbers, no +/- background tinting. */
+@source "../node_modules/@git-diff-view/react/dist";
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
