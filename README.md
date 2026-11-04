@@ -3,26 +3,29 @@
 
 ### HeiClaw — a branded build of [PicoClaw](https://github.com/sipeed/picoclaw)
 
-HeiClaw is the private product line built on top of the upstream PicoClaw agent: same
-engine, our name, our logo, and a web panel we reworked for daily use.
+Same engine, our name and logo, and a web panel reworked for daily use: a ChatGPT-style
+sidebar with per-conversation URLs and content search, a merged model picker that shows the
+provider's thinking levels, per-session model choice, a provider price table, an embedded
+terminal with splits, and per-turn statistics under each answer.
 
-**Runs at** [claw.eihei.top](https://claw.eihei.top) behind Tinyauth.
-**Upstream:** [sipeed/picoclaw](https://github.com/sipeed/picoclaw), MIT — all credit for the
-agent architecture, providers, channels and tooling belongs to the PicoClaw contributors.
+**Upstream:** [sipeed/picoclaw](https://github.com/sipeed/picoclaw), MIT — the agent
+architecture, providers, channels and tooling belong to the PicoClaw contributors.
 
 <p align="left">
 
-**⚠️ No security guarantee / 不保证安全性.** This is a personal deployment of an agent that
-holds API keys, your conversation history, and a shell with full permissions. It is provided
-as-is, with no warranty and no security audit; see
+**⚠️ No security guarantee / 不保证安全性.** This build puts API keys, full conversation
+history and a shell with no approval step behind one login page. It is provided as-is: not
+audited, not penetration-tested, no warranty, no liability. Read
 [docs/security/deployment_risk.md](docs/security/deployment_risk.md)
-([中文](docs/security/deployment_risk.zh.md)) for the threat model, what is deliberately
-*not* hardened, and how to reduce your exposure. Do not put this on a network you do not
-control, and do not hand someone the URL.
+([中文](docs/security/deployment_risk.zh.md)) before exposing one on a network — it covers
+what a breach actually yields, what this software does *not* give you out of the box, and what
+to do about it in an evening. In short: keep it on loopback behind your own auth, never hand
+out the URL, and treat the agent's input as hostile.
 
-本仓库是 PicoClaw 的品牌化分支（名称、logo、面板均替换为 HeiClaw）。它把 API Key、完整对话记录和
-一个拥有完整权限的网页终端放在同一台机器上，**没有做过安全审计、不提供任何保证、也没有免责声明之外的
-补偿**；风险模型、未加固项和规避方法见上面的风险文档。不要把它部署到你不控制的网络里，也不要把地址给别人。
+本仓库是 PicoClaw 的品牌化版本（名称、logo、面板均换成我们自己的）。它把 API Key、完整对话记录和
+一个不需要逐条确认就能执行命令的网页终端放在同一个登录页后面：**没有安全审计、没有渗透测试、不提供任何
+保证，也不承担任何责任**。上线前先读上面的风险文档。一句话版本：只绑回环、前面自己放鉴权、地址不要给别人、
+把外部内容当成敌意输入。
 
 </p>
 
