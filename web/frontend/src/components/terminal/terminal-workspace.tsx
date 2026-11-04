@@ -136,6 +136,25 @@ function firstTabsetId(node: LayoutNode): string | undefined {
   return found
 }
 
+function collectTabsetIds(
+  node: LayoutNode,
+  into = new Set<string>(),
+): Set<string> {
+  walkTabsets(node, (tabset) => into.add(tabset.id))
+  return into
+}
+
+/** Which pane (tabset) holds this tab — the split/append target. */
+function tabsetIdOfTab(node: LayoutNode, tabId: string): string | undefined {
+  let found: string | undefined
+  walkTabsets(node, (tabset) => {
+    if (!found && tabset.tabs.some((tab) => tab.id === tabId)) {
+      found = tabset.id
+    }
+  })
+  return found
+}
+
 function countTabs(node: LayoutNode): number {
   let total = 0
   walkTabsets(node, (tabset) => {
@@ -204,6 +223,9 @@ export function TerminalWorkspace({
   const [activePaneId, setActivePaneId] = useState<string | undefined>(
     undefined,
   )
+  // A split's new pane only exists after the library reports the new model, so the
+  // tab we want to focus is remembered here until then.
+  const pendingSplitFocusTabId = useRef<string | null>(null)
   const targetTabsetId =
     activePaneId ?? (model ? firstTabsetId(model.root) : undefined)
   const maximizedTabsetId = model?.maximizedTabsetId
@@ -255,6 +277,7 @@ export function TerminalWorkspace({
         tabsetId: targetTabsetId,
         region: orientation === "horizontal" ? "right" : "bottom",
       })
+      pendingSplitFocusTabId.current = id
     },
     [isMobile, setExpanded, targetTabsetId],
   )
@@ -422,9 +445,17 @@ export function TerminalWorkspace({
             const changed = next
             setModel(changed)
             setLayout(toSkeleton(changed.root))
+            const liveTabsets = collectTabsetIds(changed.root)
             setActivePaneId((current) => {
-              const alive = collectTabIds(changed.root)
-              return current && alive.size > 0 ? current : undefined
+              const pending = pendingSplitFocusTabId.current
+              if (pending) {
+                const pane = tabsetIdOfTab(changed.root, pending)
+                if (pane) {
+                  pendingSplitFocusTabId.current = null
+                  return pane
+                }
+              }
+              return current && liveTabsets.has(current) ? current : undefined
             })
             // The library closes tabs on its own, so the model is the only truth
             // about which shells should still exist: anything the manager holds
@@ -437,7 +468,13 @@ export function TerminalWorkspace({
             }
           }}
           renderTabContent={(tab) => (
-            <TerminalPane tabId={tab.id} className="min-h-0" />
+            <TerminalPane
+              tabId={tab.id}
+              className="min-h-0"
+              onPointerDown={() =>
+                setActivePaneId(tabsetIdOfTab(model.root, tab.id))
+              }
+            />
           )}
           tabPlacement="top"
           hiddenTabBehavior="keep-mounted"
@@ -475,6 +512,18 @@ function TerminalTabChip({
   return (
     <div
       data-terminal-tab={id}
+      onMouseDown={(event) => {
+        // Middle button: stop the browser's autoscroll so the click can close us.
+        if (event.button === 1) {
+          event.preventDefault()
+        }
+      }}
+      onAuxClick={(event) => {
+        if (event.button === 1) {
+          event.preventDefault()
+          onClose()
+        }
+      }}
       className={cn(
         "group flex h-6 max-w-[190px] min-w-0 shrink-0 items-center gap-1 rounded-md px-1.5 text-xs",
         selected
@@ -536,6 +585,7 @@ function TerminalTabChip({
         onAuxClick={(event) => {
           if (event.button === 1) {
             event.preventDefault()
+            event.stopPropagation()
             onClose()
           }
         }}
