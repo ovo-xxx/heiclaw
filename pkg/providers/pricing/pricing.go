@@ -176,8 +176,8 @@ var deepSeekBand = newBand(8*3600,
 // here; unknown models are priced as nothing rather than guessed at, and callers
 // show no cost for them.
 var tables = map[string]Table{
-	"deepseek-flash": {
-		Name:     "deepseek-flash",
+	"deepseek-v4-flash": {
+		Name:     "deepseek-v4-flash",
 		Currency: "CNY",
 		OffPeak:  Rate{InputPerMTok: 1, CacheReadPerMTok: 0.02, OutputPerMTok: 4},
 		Peak:     Rate{InputPerMTok: 2, CacheReadPerMTok: 0.04, OutputPerMTok: 8},

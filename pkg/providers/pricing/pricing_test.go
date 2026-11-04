@@ -2,6 +2,7 @@ package pricing
 
 import (
 	"math"
+	"strings"
 	"testing"
 	"time"
 
@@ -19,7 +20,7 @@ func cst(year int, month time.Month, day, hour, minute int) time.Time {
 // would resolve rather than off the package.
 func deepSeekRow(t *testing.T) Table {
 	t.Helper()
-	table, ok := TableFor("deepseek-flash")
+	table, ok := TableFor("deepseek-v4-flash")
 	if !ok {
 		t.Fatal("no flash row to test the band against")
 	}
@@ -116,14 +117,36 @@ func TestBandIgnoresUnparsableWindows(t *testing.T) {
 }
 
 func TestTableForStripsProviderPrefix(t *testing.T) {
-	for _, model := range []string{"deepseek-flash", "DeepSeek/deepseek-flash", " deepseek-flash "} {
+	for _, model := range []string{"deepseek-v4-flash", "DeepSeek/deepseek-v4-flash", " deepseek-v4-flash "} {
 		table, ok := TableFor(model)
-		if !ok || table.Name != "deepseek-flash" {
+		if !ok || table.Name != "deepseek-v4-flash" {
 			t.Errorf("TableFor(%q) = %+v, %v; want the flash row", model, table, ok)
 		}
 	}
 	if _, ok := TableFor("gpt-5-mini"); ok {
 		t.Error("TableFor resolved a model no row covers")
+	}
+}
+
+// A row keyed to a name no provider advertises prices nothing, and prices nothing
+// quietly: the panel just stops showing money. This is the check that catches a
+// provider renaming a model out from under a row.
+func TestEveryRowIsAdvertisedByItsProvider(t *testing.T) {
+	advertised := map[string]bool{}
+	for _, option := range providers.ModelProviderOptions() {
+		for _, model := range option.CommonModels {
+			advertised[strings.ToLower(model)] = true
+		}
+	}
+
+	for name := range tables {
+		tail := strings.ToLower(name)
+		if idx := strings.LastIndex(tail, "/"); idx >= 0 {
+			tail = tail[idx+1:]
+		}
+		if !advertised[tail] {
+			t.Errorf("price row %q matches no CommonModels entry, so no config can hit it", name)
+		}
 	}
 }
 
@@ -134,7 +157,7 @@ func TestForCallPricesEachCategorySeparately(t *testing.T) {
 		CacheReadTokens: 90_000,
 		OutputTokens:    500,
 	}
-	cost := ForCall("deepseek-flash", cst(2026, time.November, 4, 3, 0), usage)
+	cost := ForCall("deepseek-v4-flash", cst(2026, time.November, 4, 3, 0), usage)
 	if cost == nil {
 		t.Fatal("ForCall returned nothing for a covered model")
 	}
@@ -152,7 +175,7 @@ func TestForCallPricesEachCategorySeparately(t *testing.T) {
 		t.Fatalf("band/currency = %v %q, want off-peak CNY", cost.Peak, cost.Currency)
 	}
 
-	peak := ForCall("deepseek-flash", cst(2026, time.November, 4, 10, 0), usage)
+	peak := ForCall("deepseek-v4-flash", cst(2026, time.November, 4, 10, 0), usage)
 	if !peak.Peak {
 		t.Fatal("10:00 on a Wednesday should price as peak")
 	}
