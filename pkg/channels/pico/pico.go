@@ -66,10 +66,18 @@ func outboundMessageIsToolCalls(msg bus.OutboundMessage) bool {
 	return strings.EqualFold(strings.TrimSpace(msg.Context.Raw["message_kind"]), MessageKindToolCalls)
 }
 
+func outboundMessageIsToolResults(msg bus.OutboundMessage) bool {
+	if len(msg.Context.Raw) == 0 {
+		return false
+	}
+	return strings.EqualFold(strings.TrimSpace(msg.Context.Raw["message_kind"]), MessageKindToolResults)
+}
+
 func outboundMessageFinalizesTrackedToolFeedback(msg bus.OutboundMessage) bool {
 	return !outboundMessageIsToolFeedback(msg) &&
 		!outboundMessageIsThought(msg) &&
-		!outboundMessageIsToolCalls(msg)
+		!outboundMessageIsToolCalls(msg) &&
+		!outboundMessageIsToolResults(msg)
 }
 
 // writeJSON sends a JSON message to the connection with write locking.
@@ -344,6 +352,12 @@ func (c *PicoChannel) Send(ctx context.Context, msg bus.OutboundMessage) ([]stri
 		payload[PayloadKeyKind] = MessageKindToolCalls
 		if toolCalls, ok := picoToolCallsPayload(msg); ok {
 			payload[PayloadKeyToolCalls] = toolCalls
+		}
+
+	case outboundMessageIsToolResults(msg):
+		payload[PayloadKeyKind] = MessageKindToolResults
+		if results, ok := picoToolResultsPayload(msg); ok {
+			payload[PayloadKeyToolResults] = results
 		}
 	}
 	setContextUsagePayload(payload, msg.ContextUsage)
@@ -1535,6 +1549,22 @@ func picoToolCallsPayload(msg bus.OutboundMessage) ([]utils.VisibleToolCall, boo
 		return nil, false
 	}
 	return toolCalls, true
+}
+
+// picoToolResultsPayload decodes the interim per-call records published the
+// moment a tool finishes. Same ToolStat shape the turn's final stats use, so
+// the panel reads one contract.
+func picoToolResultsPayload(msg bus.OutboundMessage) ([]providers.ToolStat, bool) {
+	raw := strings.TrimSpace(msg.Context.Raw[PayloadKeyToolResults])
+	if raw == "" {
+		return nil, false
+	}
+
+	var results []providers.ToolStat
+	if err := json.Unmarshal([]byte(raw), &results); err != nil || len(results) == 0 {
+		return nil, false
+	}
+	return results, true
 }
 
 func (c *PicoChannel) editMessage(

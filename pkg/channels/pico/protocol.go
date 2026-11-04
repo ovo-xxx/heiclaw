@@ -27,6 +27,7 @@ const (
 	PayloadKeyKind        = "kind"
 	PayloadKeyPlaceholder = "placeholder"
 	PayloadKeyToolCalls   = "tool_calls"
+	PayloadKeyToolResults = "tool_results"
 	PayloadKeyModelName   = "model_name"
 	// PayloadKeyThinkingLevel is the composer's thinking-effort choice, sent with
 	// the message so the turn can price and run it without a session round trip.
@@ -35,8 +36,9 @@ const (
 	PayloadKeyFileChanges   = "file_changes"
 	PayloadKeyTurnStats     = "turn_stats"
 
-	MessageKindThought   = "thought"
-	MessageKindToolCalls = "tool_calls"
+	MessageKindThought     = "thought"
+	MessageKindToolCalls   = "tool_calls"
+	MessageKindToolResults = "tool_results"
 )
 
 // PicoMessage is the wire format for all Pico Protocol messages.

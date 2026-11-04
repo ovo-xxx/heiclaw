@@ -256,6 +256,66 @@ func (al *AgentLoop) publishPicoToolCallInterim(
 	}
 }
 
+// publishPicoToolResultInterim announces one finished tool call to the pico
+// panel the moment it completes, instead of letting the row spin until the
+// turn's final answer carries the stats. One message per call; the panel
+// matches it back to the announced call by call_id. Best-effort: dropping one
+// only costs live seconds — the turn's answer still publishes the full record.
+func (al *AgentLoop) publishPicoToolResultInterim(
+	ctx context.Context,
+	ts *turnState,
+	callID, toolName string,
+	success bool,
+	durationMS int64,
+) {
+	if ts == nil || ts.chatID == "" || al == nil || al.bus == nil {
+		return
+	}
+	if strings.TrimSpace(callID) == "" {
+		// Without a call id the panel cannot tell which row finished, so an
+		// interim record would blur the picture rather than sharpen it.
+		return
+	}
+
+	record := providers.ToolStat{
+		Name:       toolName,
+		OK:         success,
+		DurationMS: durationMS,
+		CallID:     callID,
+	}
+	raw, err := json.Marshal([]providers.ToolStat{record})
+	if err != nil {
+		logger.WarnCF("agent", "Failed to serialize pico tool result", map[string]any{
+			"channel": ts.channel,
+			"chat_id": ts.chatID,
+			"tool":    toolName,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	msg := outboundMessageForTurnWithOptions(ts, "", outboundTurnMessageOptions{
+		kind: messageKindToolResults,
+		raw: map[string]string{
+			metadataKeyToolResults: string(raw),
+		},
+	})
+
+	pubCtx, pubCancel := context.WithTimeout(ctx, 3*time.Second)
+	err = al.bus.PublishOutbound(pubCtx, msg)
+	pubCancel()
+	if err != nil && !errors.Is(err, context.DeadlineExceeded) &&
+		!errors.Is(err, context.Canceled) &&
+		!errors.Is(err, bus.ErrBusClosed) {
+		logger.WarnCF("agent", "Failed to publish pico tool result", map[string]any{
+			"channel": ts.channel,
+			"chat_id": ts.chatID,
+			"tool":    toolName,
+			"error":   err.Error(),
+		})
+	}
+}
+
 func (al *AgentLoop) handleReasoning(
 	ctx context.Context,
 	reasoningContent, channelName, channelID string,

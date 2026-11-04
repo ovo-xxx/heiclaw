@@ -326,6 +326,16 @@ toolLoop:
 						toolDuration.Milliseconds(),
 						tc.ID,
 					)
+					if ts.channel == "pico" {
+						al.publishPicoToolResultInterim(
+							turnCtx,
+							ts,
+							tc.ID,
+							toolName,
+							!hookResult.IsError,
+							toolDuration.Milliseconds(),
+						)
+					}
 
 					messages = append(messages, toolResultMsg)
 					if !ts.opts.NoHistory {
@@ -721,6 +731,16 @@ toolLoop:
 			toolDuration.Milliseconds(),
 			tc.ID,
 		)
+		if ts.channel == "pico" && !toolResult.Async {
+			al.publishPicoToolResultInterim(
+				turnCtx,
+				ts,
+				tc.ID,
+				toolName,
+				!toolResult.IsError,
+				toolDuration.Milliseconds(),
+			)
+		}
 		messages = append(messages, toolResultMsg)
 		if !ts.opts.NoHistory {
 			ts.agent.Sessions.AddFullMessage(ts.sessionKey, toolResultMsg)
