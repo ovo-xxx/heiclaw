@@ -41,6 +41,30 @@ export interface TurnLLMCallStat {
   fallback_attempt?: number
   tool_calls?: number
   content_chars?: number
+  started_at_ms?: number
+  cost?: TurnCallCost
+}
+
+// One call priced against the provider's published table. The split travels with
+// the total so a reader can check it, and `peak` says which band was charged.
+export interface TurnCallCost {
+  currency: string
+  amount: number
+  input: number
+  cache_read: number
+  output: number
+  peak: boolean
+  table?: string
+}
+
+export interface TurnCost {
+  currency: string
+  amount: number
+  peak_calls?: number
+  off_peak_calls?: number
+  covered_calls: number
+  uncounted_calls?: number
+  table?: string
 }
 
 export interface TurnToolStat {
@@ -72,6 +96,7 @@ export interface TurnStats {
   llm_calls?: TurnLLMCallStat[]
   tools?: TurnToolStat[]
   context_usage?: TurnContextUsage
+  cost?: TurnCost
 }
 
 export interface SessionDetail {

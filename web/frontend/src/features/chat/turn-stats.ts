@@ -1,5 +1,7 @@
 import {
+  type TurnCallCost,
   type TurnContextUsage,
+  type TurnCost,
   type TurnLLMCallStat,
   type TurnStats,
   type TurnTokens,
@@ -126,6 +128,48 @@ function parseLLMCallStat(raw: unknown): TurnLLMCallStat | undefined {
     fallback_attempt: toPositiveNumber(obj.fallback_attempt),
     tool_calls: toPositiveNumber(obj.tool_calls),
     content_chars: toPositiveNumber(obj.content_chars),
+    started_at_ms: toPositiveNumber(obj.started_at_ms),
+    cost: parseCallCost(obj.cost),
+  }
+}
+
+function parseCallCost(raw: unknown): TurnCallCost | undefined {
+  const obj = toRecord(raw)
+  if (!obj) {
+    return undefined
+  }
+  const currency = toText(obj.currency)
+  if (!currency) {
+    return undefined
+  }
+  return {
+    currency,
+    amount: toNumber(obj.amount),
+    input: toNumber(obj.input),
+    cache_read: toNumber(obj.cache_read),
+    output: toNumber(obj.output),
+    peak: obj.peak === true,
+    table: toText(obj.table),
+  }
+}
+
+function parseTurnCost(raw: unknown): TurnCost | undefined {
+  const obj = toRecord(raw)
+  if (!obj) {
+    return undefined
+  }
+  const currency = toText(obj.currency)
+  if (!currency) {
+    return undefined
+  }
+  return {
+    currency,
+    amount: toNumber(obj.amount),
+    peak_calls: toPositiveNumber(obj.peak_calls),
+    off_peak_calls: toPositiveNumber(obj.off_peak_calls),
+    covered_calls: toNumber(obj.covered_calls),
+    uncounted_calls: toPositiveNumber(obj.uncounted_calls),
+    table: toText(obj.table),
   }
 }
 
@@ -218,6 +262,7 @@ export function parseTurnStats(raw: unknown): TurnStats | undefined {
     llm_calls: llmCalls,
     tools: parseToolStats(obj.tools),
     context_usage: parseTurnContextUsage(obj.context_usage),
+    cost: parseTurnCost(obj.cost),
   }
 }
 
@@ -235,7 +280,61 @@ export function turnTotalTokens(stats?: TurnStats, usage?: TurnUsage): number {
 }
 
 export function formatTokenCount(value: number): string {
+  const count = Math.round(value)
+  const magnitude = Math.abs(count)
+  if (magnitude >= 1_000_000) {
+    return `${trimFraction(count / 1_000_000)}M`
+  }
+  if (magnitude >= 1_000) {
+    return `${trimFraction(count / 1_000)}K`
+  }
+  return String(count)
+}
+
+// The abbreviated number is for scanning; the exact count belongs where it can
+// still be read, so every caller that folds it into a label passes this as title.
+export function formatTokenExact(value: number): string {
   return Math.round(value).toLocaleString()
+}
+
+function trimFraction(value: number): string {
+  return value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "")
+}
+
+// Decode speed for one call: the tokens the model wrote over the window in which
+// it was actually writing. The wait for the first token and any tool execution
+// stay out of the denominator, or a slow tool would read as a slow model.
+export function callOutputRate(call: TurnLLMCallStat): number | undefined {
+  const tokens = call.tokens.output_tokens
+  const windowMs = call.latency_ms - (call.time_to_first_token_ms ?? 0)
+  if (tokens <= 0 || windowMs <= 250) {
+    return undefined
+  }
+  return (tokens * 1000) / windowMs
+}
+
+// Turn-level speed weights nothing but generation: it sums the output tokens and
+// the generation windows of the calls that reported both. Undefined when no call
+// measured a window, rather than a zero that would read as a stalled model.
+export function turnOutputRate(stats?: TurnStats): number | undefined {
+  let tokens = 0
+  let windowMs = 0
+  for (const call of stats?.llm_calls ?? []) {
+    if (callOutputRate(call) === undefined) {
+      continue
+    }
+    tokens += call.tokens.output_tokens
+    windowMs += call.latency_ms - (call.time_to_first_token_ms ?? 0)
+  }
+  if (tokens <= 0 || windowMs <= 250) {
+    return undefined
+  }
+  return (tokens * 1000) / windowMs
+}
+
+export function formatTokenRate(perSecond: number): string {
+  const digits = perSecond >= 100 ? 0 : 1
+  return `${perSecond.toFixed(digits)} tok/s`
 }
 
 export function formatCostUsd(value: number): string {
@@ -244,6 +343,45 @@ export function formatCostUsd(value: number): string {
   }
   const digits = value >= 1 ? 2 : 4
   return `$${value.toFixed(digits).replace(/\.?0+$/, "")}`
+}
+
+const CURRENCY_SIGNS: Record<string, string> = {
+  CNY: "￥",
+  USD: "$",
+}
+
+// Money is shown in the currency the price table bills in. A DeepSeek turn costs
+// fractions of a fen, so small amounts keep four decimals instead of collapsing to
+// ￥0.00, which would read as a free turn.
+export function formatCost(currency: string, amount: number): string {
+  if (!(amount > 0)) {
+    return ""
+  }
+  const sign = CURRENCY_SIGNS[currency] ?? `${currency} `
+  return `${sign}${amount.toFixed(amount >= 1 ? 2 : 4)}`
+}
+
+// Cost of a turn: the computed amount when the price table covered its calls,
+// otherwise the figure a provider reported for itself.
+export function turnCostText(stats?: TurnStats): string {
+  if (stats?.cost) {
+    return formatCost(stats.cost.currency, stats.cost.amount)
+  }
+  return formatCostUsd(stats?.tokens.cost_usd ?? 0)
+}
+
+// What the priced total left out, so a partial bill never reads as complete.
+export function turnCostTitle(stats?: TurnStats): string | undefined {
+  const cost = stats?.cost
+  if (!cost) {
+    return undefined
+  }
+  const parts = [
+    `${cost.currency} ${cost.amount.toFixed(6)}`,
+    cost.table ?? "",
+    cost.uncounted_calls ? `+${cost.uncounted_calls} 未计价` : "",
+  ]
+  return parts.filter(Boolean).join(" · ")
 }
 
 export function formatDuration(ms: number): string {

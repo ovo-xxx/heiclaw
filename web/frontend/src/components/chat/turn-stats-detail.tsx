@@ -4,9 +4,15 @@ import { useTranslation } from "react-i18next"
 import type { TurnLLMCallStat, TurnStats } from "@/api/sessions"
 import { TurnStatsRing } from "@/components/chat/turn-stats-ring"
 import {
-  formatCostUsd,
+  callOutputRate,
+  formatCost,
   formatDuration,
   formatTokenCount,
+  formatTokenExact,
+  formatTokenRate,
+  turnCostText,
+  turnCostTitle,
+  turnOutputRate,
 } from "@/features/chat/turn-stats"
 import { cn } from "@/lib/utils"
 
@@ -27,10 +33,12 @@ function StatCell({
   label,
   value,
   className,
+  title,
 }: {
   label: string
   value: string
   className?: string
+  title?: string
 }) {
   return (
     <div className="flex min-w-0 items-baseline justify-between gap-1.5">
@@ -42,10 +50,32 @@ function StatCell({
           "text-muted-foreground/85 shrink-0 text-[11px] tabular-nums",
           className,
         )}
+        title={title}
       >
         {value}
       </span>
     </div>
+  )
+}
+
+// Counts are shown abbreviated and carry the exact number on hover, the way the
+// rest of the panel reads token totals at a glance.
+function TokenCell({
+  label,
+  value,
+  className,
+}: {
+  label: string
+  value: number
+  className?: string
+}) {
+  return (
+    <StatCell
+      label={label}
+      value={formatTokenCount(value)}
+      title={formatTokenExact(value)}
+      className={className}
+    />
   )
 }
 
@@ -67,10 +97,12 @@ function LLMCallRow({
   const { t } = useTranslation()
   const model = call.model ?? ""
   const provider = call.provider ?? ""
+  const rate = callOutputRate(call)
   const hasBadges =
     call.retry_attempt !== undefined ||
     call.fallback_attempt !== undefined ||
-    call.streamed_fallback === true
+    call.streamed_fallback === true ||
+    call.cost !== undefined
 
   return (
     <div className="border-border/25 bg-background/45 dark:bg-background/20 rounded-lg border px-2 py-1.5">
@@ -94,17 +126,17 @@ function LLMCallRow({
       </div>
 
       <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 sm:grid-cols-3">
-        <StatCell
+        <TokenCell
           label={t("chat.turnStats.input")}
-          value={formatTokenCount(call.tokens.input_tokens)}
+          value={call.tokens.input_tokens}
         />
-        <StatCell
+        <TokenCell
           label={t("chat.turnStats.output")}
-          value={formatTokenCount(call.tokens.output_tokens)}
+          value={call.tokens.output_tokens}
         />
-        <StatCell
+        <TokenCell
           label={t("chat.turnStats.total")}
-          value={formatTokenCount(call.tokens.total_tokens)}
+          value={call.tokens.total_tokens}
         />
         <StatCell
           label={t("chat.turnStats.latency")}
@@ -114,6 +146,13 @@ function LLMCallRow({
           <StatCell
             label={t("chat.turnStats.firstToken")}
             value={formatDuration(call.time_to_first_token_ms)}
+          />
+        )}
+        {rate !== undefined && (
+          <StatCell
+            label={t("chat.turnStats.outputRate")}
+            value={formatTokenRate(rate)}
+            className="text-foreground/80"
           />
         )}
         {call.finish_reason && (
@@ -129,15 +168,40 @@ function LLMCallRow({
           />
         )}
         {call.content_chars !== undefined && (
-          <StatCell
+          <TokenCell
             label={t("chat.turnStats.chars")}
-            value={formatTokenCount(call.content_chars)}
+            value={call.content_chars}
+          />
+        )}
+        {call.cost && (
+          <StatCell
+            label={t("chat.turnStats.cost")}
+            value={formatCost(call.cost.currency, call.cost.amount)}
+            title={[
+              `${call.cost.currency} ${call.cost.amount.toFixed(6)}`,
+              `${t("chat.turnStats.input")} ${call.cost.input.toFixed(6)}`,
+              `${t("chat.turnStats.cacheRead")} ${call.cost.cache_read.toFixed(6)}`,
+              `${t("chat.turnStats.output")} ${call.cost.output.toFixed(6)}`,
+              call.cost.table ?? "",
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+            className="text-foreground/80"
           />
         )}
       </div>
 
       {hasBadges && (
         <div className="mt-1 flex flex-wrap gap-1">
+          {call.cost && (
+            <BadgePill>
+              {t(
+                call.cost.peak
+                  ? "chat.turnStats.peakBand"
+                  : "chat.turnStats.offPeakBand",
+              )}
+            </BadgePill>
+          )}
           {call.retry_attempt !== undefined && (
             <BadgePill>
               {t("chat.turnStats.retry", { n: call.retry_attempt })}
@@ -163,7 +227,9 @@ export function TurnStatsDetail({ stats, modelName }: TurnStatsDetailProps) {
   const tools = stats.tools ?? []
   const context = stats.context_usage
   const tokens = stats.tokens
-  const cost = formatCostUsd(tokens.cost_usd ?? 0)
+  const turnRate = turnOutputRate(stats)
+  const cost = turnCostText(stats)
+  const costTitle = turnCostTitle(stats)
   const droppedCalls = stats.dropped_llm_call_count ?? 0
   const droppedTools = stats.dropped_tool_count ?? 0
 
@@ -206,9 +272,17 @@ export function TurnStatsDetail({ stats, modelName }: TurnStatsDetailProps) {
           value={String(stats.tool_iterations)}
         />
         {stats.stream_chunks !== undefined && (
-          <StatCell
+          <TokenCell
             label={t("chat.turnStats.streamChunks")}
-            value={formatTokenCount(stats.stream_chunks)}
+            value={stats.stream_chunks}
+          />
+        )}
+        {turnRate !== undefined && (
+          <StatCell
+            label={t("chat.turnStats.outputRate")}
+            value={formatTokenRate(turnRate)}
+            title={t("chat.turnStats.outputRateHint")}
+            className="text-foreground/80"
           />
         )}
       </div>
@@ -216,40 +290,41 @@ export function TurnStatsDetail({ stats, modelName }: TurnStatsDetailProps) {
       <div>
         <SectionTitle>{t("chat.turnStats.tokensTitle")}</SectionTitle>
         <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 sm:grid-cols-3">
-          <StatCell
+          <TokenCell
             label={t("chat.turnStats.input")}
-            value={formatTokenCount(tokens.input_tokens)}
+            value={tokens.input_tokens}
           />
-          <StatCell
+          <TokenCell
             label={t("chat.turnStats.output")}
-            value={formatTokenCount(tokens.output_tokens)}
+            value={tokens.output_tokens}
           />
-          <StatCell
+          <TokenCell
             label={t("chat.turnStats.total")}
-            value={formatTokenCount(tokens.total_tokens)}
+            value={tokens.total_tokens}
           />
           {tokens.cache_read_tokens !== undefined && (
-            <StatCell
+            <TokenCell
               label={t("chat.turnStats.cacheRead")}
-              value={formatTokenCount(tokens.cache_read_tokens)}
+              value={tokens.cache_read_tokens}
             />
           )}
           {tokens.cache_creation_tokens !== undefined && (
-            <StatCell
+            <TokenCell
               label={t("chat.turnStats.cacheWrite")}
-              value={formatTokenCount(tokens.cache_creation_tokens)}
+              value={tokens.cache_creation_tokens}
             />
           )}
           {tokens.reasoning_tokens !== undefined && (
-            <StatCell
+            <TokenCell
               label={t("chat.turnStats.reasoning")}
-              value={formatTokenCount(tokens.reasoning_tokens)}
+              value={tokens.reasoning_tokens}
             />
           )}
           {cost && (
             <StatCell
               label={t("chat.turnStats.cost")}
               value={cost}
+              title={costTitle}
               className="text-foreground/80"
             />
           )}
@@ -341,21 +416,22 @@ export function TurnStatsDetail({ stats, modelName }: TurnStatsDetailProps) {
             <StatCell
               label={t("chat.turnStats.contextUsed")}
               value={`${formatTokenCount(context.used_tokens)} / ${formatTokenCount(context.total_tokens)}`}
+              title={`${formatTokenExact(context.used_tokens)} / ${formatTokenExact(context.total_tokens)}`}
             />
             {context.history_tokens !== undefined && (
-              <StatCell
+              <TokenCell
                 label={t("chat.turnStats.contextHistory")}
-                value={formatTokenCount(context.history_tokens)}
+                value={context.history_tokens}
               />
             )}
-            <StatCell
+            <TokenCell
               label={t("chat.contextCompressAt")}
-              value={formatTokenCount(context.compress_at_tokens)}
+              value={context.compress_at_tokens}
             />
             {context.summarize_at_tokens !== undefined && (
-              <StatCell
+              <TokenCell
                 label={t("chat.contextSummarizeAt")}
-                value={formatTokenCount(context.summarize_at_tokens)}
+                value={context.summarize_at_tokens}
               />
             )}
           </div>

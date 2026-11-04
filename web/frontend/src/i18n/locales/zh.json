@@ -96,7 +96,11 @@
       "droppedCalls": "另有 {{count}} 次调用未记录",
       "droppedTools": "另有 {{count}} 个工具未记录",
       "contextUsed": "已用 / 上限",
-      "contextHistory": "历史消息"
+      "contextHistory": "历史消息",
+      "outputRate": "输出速度",
+      "outputRateHint": "输出 Token ÷ 模型实际生成时长，不含首字等待与工具执行",
+      "peakBand": "高峰时段",
+      "offPeakBand": "闲时时段"
     },
     "changedFilesLabel": "改动文件",
     "toolCallExplanationLabel": "调用提示",

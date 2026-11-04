@@ -8,7 +8,12 @@ import { TurnStatsRing } from "@/components/chat/turn-stats-ring"
 import {
   formatDuration,
   formatTokenCount,
+  formatTokenExact,
+  formatTokenRate,
+  turnCostText,
+  turnCostTitle,
   turnDurationMs,
+  turnOutputRate,
   turnTotalTokens,
 } from "@/features/chat/turn-stats"
 import { cn } from "@/lib/utils"
@@ -32,7 +37,12 @@ export function TurnStatsSummary({
 
   const durationMs = turnDurationMs(stats, elapsedMs)
   const totalTokens = turnTotalTokens(stats, usage)
+  const outputRate = turnOutputRate(stats)
+  const costText = turnCostText(stats)
   const context = stats?.context_usage
+  const exactTokens =
+    totalTokens > 0 ? formatTokenExact(totalTokens) : undefined
+  const hover = [exactTokens, turnCostTitle(stats)].filter(Boolean).join(" · ")
 
   const parts: string[] = []
   if (totalTokens > 0) {
@@ -42,6 +52,12 @@ export function TurnStatsSummary({
   }
   if (durationMs !== undefined) {
     parts.push(formatDuration(durationMs))
+  }
+  if (outputRate !== undefined) {
+    parts.push(formatTokenRate(outputRate))
+  }
+  if (costText) {
+    parts.push(costText)
   }
   if (parts.length === 0 && !context) {
     return null
@@ -55,7 +71,9 @@ export function TurnStatsSummary({
     return (
       <div className="text-muted-foreground/50 mt-1 flex items-center gap-1.5 px-1 text-[11px]">
         <IconGauge className="size-3 shrink-0 opacity-70" />
-        <span className="min-w-0 truncate tabular-nums">{summaryLine}</span>
+        <span className="min-w-0 truncate tabular-nums" title={exactTokens}>
+          {summaryLine}
+        </span>
       </div>
     )
   }
@@ -75,7 +93,9 @@ export function TurnStatsSummary({
         className="text-muted-foreground/55 hover:text-muted-foreground/80 flex w-full items-center gap-1.5 rounded-md px-1 py-0.5 text-left text-[11px] transition-colors"
       >
         <IconGauge className="size-3 shrink-0 opacity-70" />
-        <span className="min-w-0 truncate tabular-nums">{summaryLine}</span>
+        <span className="min-w-0 truncate tabular-nums" title={hover}>
+          {summaryLine}
+        </span>
         <span className="ml-auto flex shrink-0 items-center gap-1.5 pl-1.5">
           {context && (
             <>

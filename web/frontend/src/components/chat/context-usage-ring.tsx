@@ -2,16 +2,12 @@ import { IconArrowRight } from "@tabler/icons-react"
 import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 
+import { formatTokenCount } from "@/features/chat/turn-stats"
 import type { ContextUsage } from "@/store/chat"
 
 interface ContextUsageRingProps {
   usage: ContextUsage
   onDetailClick?: () => void
-}
-
-function formatTokens(n: number): string {
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
-  return String(n)
 }
 
 export function ContextUsageRing({
@@ -134,8 +130,8 @@ export function ContextUsageRing({
               {t("chat.contextTitle")}
             </span>
             <span className="text-xs font-medium">
-              {formatTokens(usage.used_tokens)} /{" "}
-              {formatTokens(usage.compress_at_tokens)}
+              {formatTokenCount(usage.used_tokens)} /{" "}
+              {formatTokenCount(usage.compress_at_tokens)}
             </span>
           </div>
           <div className="bg-muted mt-1.5 h-1.5 w-full overflow-hidden rounded-full">
@@ -150,24 +146,29 @@ export function ContextUsageRing({
               <div className="flex items-center justify-between text-[10px]">
                 <span className="text-muted-foreground">History</span>
                 <span className="tabular-nums">
-                  {formatTokens(usage.history_tokens)}
+                  {formatTokenCount(usage.history_tokens)}
                 </span>
               </div>
             )}
             <div className="flex items-center justify-between text-[10px]">
-              <span className="text-muted-foreground">{t("chat.contextCompressAt")}</span>
+              <span className="text-muted-foreground">
+                {t("chat.contextCompressAt")}
+              </span>
               <span className="tabular-nums">
-                {formatTokens(usage.compress_at_tokens)}
+                {formatTokenCount(usage.compress_at_tokens)}
               </span>
             </div>
-            {usage.summarize_at_tokens != null && usage.summarize_at_tokens > 0 && (
-              <div className="flex items-center justify-between text-[10px]">
-                <span className="text-muted-foreground">{t("chat.contextSummarizeAt")}</span>
-                <span className="tabular-nums">
-                  {formatTokens(usage.summarize_at_tokens)}
-                </span>
-              </div>
-            )}
+            {usage.summarize_at_tokens != null &&
+              usage.summarize_at_tokens > 0 && (
+                <div className="flex items-center justify-between text-[10px]">
+                  <span className="text-muted-foreground">
+                    {t("chat.contextSummarizeAt")}
+                  </span>
+                  <span className="tabular-nums">
+                    {formatTokenCount(usage.summarize_at_tokens)}
+                  </span>
+                </div>
+              )}
           </div>
 
           <button

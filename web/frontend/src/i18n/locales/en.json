@@ -96,7 +96,11 @@
       "droppedCalls": "+{{count}} more calls omitted",
       "droppedTools": "+{{count}} more tools omitted",
       "contextUsed": "Used / limit",
-      "contextHistory": "History"
+      "contextHistory": "History",
+      "outputRate": "Output speed",
+      "outputRateHint": "Output tokens over the window the model was generating; first-token wait and tool time stay out",
+      "peakBand": "Peak hours",
+      "offPeakBand": "Off-peak"
     },
     "changedFilesLabel": "Changed files",
     "toolCallExplanationLabel": "Call note",
