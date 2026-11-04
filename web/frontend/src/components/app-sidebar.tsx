@@ -27,7 +27,9 @@ import { cn } from "@/lib/utils"
 export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   const { t, i18n } = useTranslation()
   const { isMobile, setOpenMobile } = useSidebar()
-  const pathname = useRouterState({ select: (state) => state.location.pathname })
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  })
   const {
     channelItems,
     hasMoreChannels,

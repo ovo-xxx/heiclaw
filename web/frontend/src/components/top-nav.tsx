@@ -15,7 +15,9 @@ import { cn } from "@/lib/utils"
 // keeps its category highlighted.
 export function TopNav() {
   const { t, i18n } = useTranslation()
-  const pathname = useRouterState({ select: (state) => state.location.pathname })
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  })
   const { channelItems } = useSidebarChannels({
     language: (i18n.resolvedLanguage ?? i18n.language ?? "").toLowerCase(),
     t,
@@ -38,7 +40,7 @@ export function TopNav() {
   return (
     <nav
       aria-label={t("navigation.sections")}
-      className="bg-background border-border/40 flex shrink-0 items-center gap-1 overflow-x-auto border-b px-2 py-1"
+      className="flex min-w-0 items-center gap-1 overflow-x-auto"
     >
       {categories.map((category) => {
         const isActive = category.key === activeKey
@@ -50,14 +52,17 @@ export function TopNav() {
             aria-current={isActive ? "page" : undefined}
             data-tour={category.key === "model" ? "models-nav" : undefined}
             className={cn(
-              "flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-[13px] transition-colors",
+              "flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-sm transition-colors",
               isActive
                 ? "bg-accent text-accent-foreground font-medium"
-                : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
             )}
           >
             <Icon
-              className={cn("size-3.5", isActive ? "opacity-100" : "opacity-60")}
+              className={cn(
+                "size-3.5",
+                isActive ? "opacity-100" : "opacity-60",
+              )}
             />
             <span className="whitespace-nowrap">{t(category.labelKey)}</span>
           </Link>

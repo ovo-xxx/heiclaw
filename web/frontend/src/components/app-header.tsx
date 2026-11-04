@@ -15,6 +15,7 @@ import * as React from "react"
 import { useTranslation } from "react-i18next"
 
 import { postLauncherDashboardLogout } from "@/api/launcher-auth"
+import { TopNav } from "@/components/top-nav"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -100,7 +101,7 @@ export function AppHeader() {
 
   return (
     <header className="bg-background/95 supports-backdrop-filter:bg-background/60 border-b-border/50 sticky top-0 z-50 flex h-14 shrink-0 items-center justify-between border-b px-4 backdrop-blur">
-      <div className="flex items-center gap-2">
+      <div className="flex min-w-0 items-center gap-2">
         <SidebarTrigger className="text-muted-foreground hover:bg-accent hover:text-foreground flex h-9 w-9 items-center justify-center rounded-lg sm:hidden [&>svg]:size-5">
           <IconMenu2 />
         </SidebarTrigger>
@@ -109,6 +110,8 @@ export function AppHeader() {
             <img className="w-full" src="/logo_with_text.png" alt="Logo" />
           </Link>
         </div>
+        {/* First level of the navigation, next to the logo. */}
+        <TopNav />
       </div>
 
       {/* Center prominent connection status */}
@@ -144,7 +147,6 @@ export function AppHeader() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
 
       <div className="text-muted-foreground flex items-center gap-1 text-sm font-medium md:gap-2">
         {restartRequired && (

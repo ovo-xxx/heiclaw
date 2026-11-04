@@ -3,7 +3,6 @@ import { Toaster } from "sonner"
 
 import { AppHeader } from "@/components/app-header"
 import { AppSidebar } from "@/components/app-sidebar"
-import { TopNav } from "@/components/top-nav"
 import { TourGuide } from "@/components/tour/tour-guide"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
@@ -12,8 +11,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
   return (
     <TooltipProvider>
       <SidebarProvider className="flex h-dvh flex-col overflow-hidden">
+        {/* The categories sit in the header, right of the logo. */}
         <AppHeader />
-        <TopNav />
 
         <div className="flex min-h-0 flex-1 overflow-hidden">
           <AppSidebar />

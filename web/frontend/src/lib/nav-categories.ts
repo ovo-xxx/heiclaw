@@ -1,5 +1,3 @@
-import type { ComponentType } from "react"
-
 import {
   IconAtom,
   IconBroadcast,
@@ -13,6 +11,7 @@ import {
   IconTerminal2,
   IconTools,
 } from "@tabler/icons-react"
+import type { ComponentType } from "react"
 
 // The navigation is two levels: one category per tab in the top bar, and the
 // category's pages in the left rail. Both levels read these definitions, so a page
@@ -21,7 +20,12 @@ import {
 // Channels are the exception: their items come from the configured channel list, so
 // the caller passes them in instead of reading a static row.
 
-export type NavCategoryKey = "chat" | "model" | "channels" | "agent" | "services"
+export type NavCategoryKey =
+  | "chat"
+  | "model"
+  | "channels"
+  | "agent"
+  | "services"
 
 export interface NavSubItem {
   title: string
@@ -74,9 +78,8 @@ const categoryPrefixes: Record<NavCategoryKey, string[]> = {
 
 export function categoryForPath(pathname: string): NavCategoryKey | undefined {
   for (const [key, prefixes] of Object.entries(categoryPrefixes)) {
-    const matched = prefixes.some(
-      (prefix) =>
-        prefix === "/" ? pathname === "/" : pathname.startsWith(prefix),
+    const matched = prefixes.some((prefix) =>
+      prefix === "/" ? pathname === "/" : pathname.startsWith(prefix),
     )
     if (matched) {
       return key as NavCategoryKey
