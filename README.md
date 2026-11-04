@@ -1,4 +1,33 @@
 <div align="center">
+<img src="assets/heiclaw-lockup.svg" alt="HeiClaw" width="420">
+
+### HeiClaw — a branded build of [PicoClaw](https://github.com/sipeed/picoclaw)
+
+HeiClaw is the private product line built on top of the upstream PicoClaw agent: same
+engine, our name, our logo, and a web panel we reworked for daily use.
+
+**Runs at** [claw.eihei.top](https://claw.eihei.top) behind Tinyauth.
+**Upstream:** [sipeed/picoclaw](https://github.com/sipeed/picoclaw), MIT — all credit for the
+agent architecture, providers, channels and tooling belongs to the PicoClaw contributors.
+
+<p align="left">
+
+**⚠️ No security guarantee / 不保证安全性.** This is a personal deployment of an agent that
+holds API keys, your conversation history, and a shell with full permissions. It is provided
+as-is, with no warranty and no security audit; see
+[docs/security/deployment_risk.md](docs/security/deployment_risk.md)
+([中文](docs/security/deployment_risk.zh.md)) for the threat model, what is deliberately
+*not* hardened, and how to reduce your exposure. Do not put this on a network you do not
+control, and do not hand someone the URL.
+
+本仓库是 PicoClaw 的品牌化分支（名称、logo、面板均替换为 HeiClaw）。它把 API Key、完整对话记录和
+一个拥有完整权限的网页终端放在同一台机器上，**没有做过安全审计、不提供任何保证、也没有免责声明之外的
+补偿**；风险模型、未加固项和规避方法见上面的风险文档。不要把它部署到你不控制的网络里，也不要把地址给别人。
+
+</p>
+
+---
+
 <img src="assets/logo.webp" alt="PicoClaw" width="512">
 
 <h1>PicoClaw: Ultra-Efficient AI Assistant in Go</h1>
