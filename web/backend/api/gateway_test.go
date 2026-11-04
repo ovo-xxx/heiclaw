@@ -2592,3 +2592,30 @@ func TestModelConfigsMatchingSignatureRefUsesResolverScore(t *testing.T) {
 		t.Fatalf("matches = %#v, want resolver-selected index 1", matches)
 	}
 }
+
+// Editing a key only takes effect after the gateway restarts, so the signature that
+// drives the "restart required" prompt has to move when the key does - without the
+// signature ever carrying the secret itself.
+func TestComputeConfigSignatureTracksModelKeys(t *testing.T) {
+	cfg := &config.Config{ModelList: []*config.ModelConfig{{
+		ModelName: "probe",
+		Provider:  "deepseek",
+		Model:     "deepseek-flash",
+		APIKeys:   config.SimpleSecureStrings("sk-first-key-0001"),
+	}}}
+	first := computeConfigSignature(cfg)
+	if strings.Contains(first, "sk-first-key-0001") {
+		t.Fatal("signature carries the raw key")
+	}
+
+	cfg.ModelList[0].SetAPIKey("sk-second-key-0002")
+	second := computeConfigSignature(cfg)
+	if first == second {
+		t.Fatal("signature did not change when the key changed")
+	}
+
+	cfg.ModelList[0].SetAPIKey("sk-first-key-0001")
+	if computeConfigSignature(cfg) != first {
+		t.Fatal("signature is not stable for the same config")
+	}
+}

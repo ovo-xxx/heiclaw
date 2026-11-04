@@ -2,7 +2,9 @@ package api
 
 import (
 	"bufio"
+	"crypto/sha256"
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -428,6 +430,13 @@ func computeConfigSignature(cfg *config.Config) string {
 	if defaultModel != "" {
 		parts = append(parts, "model:"+defaultModel)
 	}
+	// A key or endpoint only takes effect after the gateway restarts, so a change to
+	// one has to move the signature - otherwise editing a key in the panel changes
+	// nothing and the panel keeps reporting the old key's errors. The key itself is
+	// hashed so the signature never carries a secret.
+	if modelSignatures := computeModelEntrySignatures(cfg); len(modelSignatures) > 0 {
+		parts = append(parts, "models:"+strings.Join(modelSignatures, ","))
+	}
 	modelStreamingSignatures := computeModelStreamingSignatures(cfg)
 	if len(modelStreamingSignatures) > 0 {
 		parts = append(parts, "model_streaming:"+strings.Join(modelStreamingSignatures, ","))
@@ -508,6 +517,31 @@ func computeConfigSignature(cfg *config.Config) string {
 		parts = append(parts, "channels:"+strings.Join(channelSignatures, ","))
 	}
 	return strings.Join(parts, ";")
+}
+
+// computeModelEntrySignatures fingerprints what the gateway reads once at boot for
+// each model: its identifiers, endpoint, proxy and the key material (hashed). Anything
+// that changes here needs a restart to be honoured.
+func computeModelEntrySignatures(cfg *config.Config) []string {
+	signatures := make([]string, 0, len(cfg.ModelList))
+	for _, model := range cfg.ModelList {
+		if model == nil || model.IsVirtual() {
+			continue
+		}
+		keyHash := sha256.Sum256([]byte(model.APIKey()))
+		signatures = append(signatures, strings.Join([]string{
+			model.ModelName,
+			model.Provider,
+			model.Model,
+			model.APIBase,
+			model.Proxy,
+			model.AuthMethod,
+			strconv.FormatBool(model.Enabled),
+			hex.EncodeToString(keyHash[:8]),
+		}, "\x1f"))
+	}
+	sort.Strings(signatures)
+	return signatures
 }
 
 func computeModelStreamingSignatures(cfg *config.Config) []string {
