@@ -1,6 +1,6 @@
 import {
-  IconArrowsMaximize,
-  IconArrowsMinimize,
+  IconChevronsDown,
+  IconChevronsUp,
   IconLayoutColumns,
   IconLayoutRows,
   IconPlus,
@@ -29,6 +29,7 @@ import {
   type TerminalLayoutSkeletonNode,
   terminalGroupsAtom,
   terminalPanelExpandedAtom,
+  terminalPanelOpenAtom,
 } from "@/store/terminal"
 
 interface TerminalWorkspaceProps {
@@ -191,6 +192,7 @@ export function TerminalWorkspace({
   const { t } = useTranslation()
   const isMobile = useIsMobile()
   const [groupsState, setGroupsState] = useAtom(terminalGroupsAtom)
+  const [open, setOpen] = useAtom(terminalPanelOpenAtom)
   const [expanded, setExpanded] = useAtom(terminalPanelExpandedAtom)
   const [models, setModels] = useState<Record<string, LayoutModel>>({})
   const [focusedPaneId, setFocusedPaneId] = useState<
@@ -213,6 +215,12 @@ export function TerminalWorkspace({
     }
     builtRef.current = true
     const pool = terminalManager.getSnapshot().map((tab) => tab.id)
+    // A dock that is closed and has nothing stored must not start a shell to fill
+    // itself: the dock mounts hidden on every chat page, and an invented PTY is one
+    // of the eight slots and a process nobody asked for. Opening it is the request.
+    if (variant !== "page" && !groupsState.groups.length && !open) {
+      return
+    }
     const groups = groupsState.groups.length
       ? groupsState.groups
       : [
@@ -329,6 +337,27 @@ export function TerminalWorkspace({
       groups: [...prev.groups, group],
     }))
   }, [setGroupsState])
+
+  // Opening the dock onto nothing is the intent behind the terminal button: land in
+  // a shell, not on an empty pane. Only the step into "open" counts, so closing the
+  // last tab (which collapses the dock) is not answered with a new shell.
+  const openRef = useRef(open)
+  useEffect(() => {
+    const wasOpen = openRef.current
+    openRef.current = open
+    if (variant !== "dock" || !open || wasOpen) {
+      return
+    }
+    if (builtRef.current && Object.keys(models).length === 0) {
+      addTerminal()
+    }
+  }, [addTerminal, models, open, variant])
+
+  // Hiding keeps every shell: the dock only goes away, the manager keeps the sockets.
+  const hidePanel = useCallback(() => {
+    setOpen(false)
+    setExpanded((value) => (value ? false : value))
+  }, [setExpanded, setOpen])
 
   const selectTab = useCallback(
     (groupId: string, tabId: string) => {
@@ -514,28 +543,43 @@ export function TerminalWorkspace({
                 </>
               )}
               {variant === "dock" && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-xs"
-                  onClick={() => setExpanded((value) => !value)}
-                  title={t(
-                    expanded
-                      ? "pages.terminal.restoreHeight"
-                      : "pages.terminal.expand",
-                  )}
-                  aria-label={t(
-                    expanded
-                      ? "pages.terminal.restoreHeight"
-                      : "pages.terminal.expand",
-                  )}
-                >
-                  {expanded ? (
-                    <IconArrowsMinimize className="size-3.5" />
-                  ) : (
-                    <IconArrowsMaximize className="size-3.5" />
-                  )}
-                </Button>
+                <>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={() => setExpanded((value) => !value)}
+                    title={t(
+                      expanded
+                        ? "pages.terminal.restoreHeight"
+                        : "pages.terminal.expand",
+                    )}
+                    aria-label={t(
+                      expanded
+                        ? "pages.terminal.restoreHeight"
+                        : "pages.terminal.expand",
+                    )}
+                  >
+                    {expanded ? (
+                      <IconChevronsDown className="size-3.5" />
+                    ) : (
+                      <IconChevronsUp className="size-3.5" />
+                    )}
+                  </Button>
+                  {/* Hiding the dock is a separate intent from shrinking it, and it
+                      needs its own button: the corner arrows read as "close" when
+                      they mean "grow". */}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={hidePanel}
+                    title={t("pages.terminal.hidePanel")}
+                    aria-label={t("pages.terminal.hidePanel")}
+                  >
+                    <IconX className="size-3.5" />
+                  </Button>
+                </>
               )}
             </div>
           </div>

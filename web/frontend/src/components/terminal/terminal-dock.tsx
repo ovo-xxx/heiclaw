@@ -32,10 +32,14 @@ export function TerminalDock() {
   })
 
   // Closing the last tab is the same intent as closing the panel; an open
-  // panel with no shell in it should not exist.
+  // panel with no shell in it should not exist. A panel that has *just* been
+  // opened onto nothing is not that case - the workspace is filling it this commit.
   const tabs = useTerminalTabs()
+  const shellCountRef = useRef(0)
   useEffect(() => {
-    if (open && tabs.length === 0) {
+    const previous = shellCountRef.current
+    shellCountRef.current = tabs.length
+    if (open && tabs.length === 0 && previous > 0) {
       setOpen(false)
       setExpanded(false)
     }

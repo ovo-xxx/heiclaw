@@ -1,16 +1,15 @@
 import { useAtom, useSetAtom } from "jotai"
 import { useCallback } from "react"
 
-import { terminalManager } from "@/components/terminal/terminal-manager"
 import {
   terminalPanelExpandedAtom,
   terminalPanelOpenAtom,
 } from "@/store/terminal"
 
 /**
- * The conversation-side control: one button opens and closes the dock, and
- * opening an empty dock drops you straight into a shell instead of an empty
- * pane.
+ * The conversation-side control: one button opens and closes the dock. Opening an
+ * empty dock is not answered here - the workspace owns layouts, and a shell without
+ * a slot in one is a shell nothing can show or close.
  */
 export function useTerminalPanelToggle() {
   const [open, setOpen] = useAtom(terminalPanelOpenAtom)
@@ -19,9 +18,6 @@ export function useTerminalPanelToggle() {
   const toggle = useCallback(() => {
     setOpen((current) => {
       const next = !current
-      if (next && terminalManager.getSnapshot().length === 0) {
-        terminalManager.createTab()
-      }
       if (!next) {
         setExpanded(false)
       }
