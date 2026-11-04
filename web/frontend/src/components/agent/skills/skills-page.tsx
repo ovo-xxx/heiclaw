@@ -2,6 +2,7 @@ import { IconLoader2, IconPlus } from "@tabler/icons-react"
 import { useTranslation } from "react-i18next"
 
 import { PageHeader } from "@/components/page-header"
+import { AgentTabs } from "@/components/agent/agent-tabs"
 import { Button } from "@/components/ui/button"
 
 import { DeleteDialog } from "./delete-dialog"
@@ -61,6 +62,7 @@ export function SkillsPage() {
     <div className="flex h-full flex-col">
       <PageHeader
         title={t("navigation.skills")}
+        titleExtra={<AgentTabs />}
         children={
           <>
             <input

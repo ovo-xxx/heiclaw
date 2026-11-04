@@ -1,16 +1,17 @@
 import {
   IconAtom,
   IconBroadcast,
+  IconCheck,
+  IconChevronLeft,
   IconChevronUp,
   IconKey,
   IconLanguage,
   IconListDetails,
   IconLogout,
   IconMessages,
-  IconMoon,
   IconRobot,
   IconSettings,
-  IconSun,
+  IconSunMoon,
   IconTerminal2,
 } from "@tabler/icons-react"
 import { Link, useRouterState } from "@tanstack/react-router"
@@ -31,23 +32,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useGateway } from "@/hooks/use-gateway"
-import { useTheme } from "@/hooks/use-theme"
+import { useSidebarChannels } from "@/hooks/use-sidebar-channels"
+import { type ThemePreference, useTheme } from "@/hooks/use-theme"
 import { categoryForPath } from "@/lib/nav-categories"
 import { cn } from "@/lib/utils"
 
-// ChatGPT-shaped sidebar: a few destinations at the top with no second level of their
-// own, every conversation in the middle, and one settings menu at the bottom holding
-// the pages that do not earn a permanent row (credentials, config, logs, terminal).
+// ChatGPT-shaped sidebar: a few destinations at the top, every conversation in the
+// middle, one settings menu at the bottom. Anything with a second level (频道 today,
+// more later) opens as a submenu that replaces this column, with 返回 as its first row.
 
 const primaryNav = [
   { key: "chat", labelKey: "navigation.chat", url: "/", icon: IconMessages },
   { key: "model", labelKey: "navigation.model_group", url: "/models", icon: IconAtom },
-  {
-    key: "channels",
-    labelKey: "navigation.channels_group",
-    url: "/channels",
-    icon: IconBroadcast,
-  },
   {
     key: "agent",
     labelKey: "navigation.agent_group",
@@ -63,9 +59,12 @@ const secondaryLinks = [
   { labelKey: "navigation.terminal", url: "/terminal", icon: IconTerminal2 },
 ] as const
 
+type SidebarView = "main" | "channels"
+
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const { t } = useTranslation()
   const { isMobile, setOpenMobile } = useSidebar()
+  const [view, setView] = React.useState<SidebarView>("main")
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   })
@@ -80,56 +79,112 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar
       {...props}
-      className="bg-background border-r-border/20 border-r pt-3"
+      className="bg-background border-r-border/20 border-r"
     >
-      <div className="flex shrink-0 flex-col gap-1 px-2 pb-1 pt-[max(0.75rem,env(safe-area-inset-top))] sm:pt-0">
-        <div className="mb-1 flex h-8 shrink-0 items-center px-2">
-          <Link to="/" onClick={closeDrawer} aria-label="PicoClaw">
-            <img className="h-5" src="/logo_with_text.png" alt="PicoClaw" />
-          </Link>
-        </div>
-        {primaryNav.map((item) => {
-          const Icon = item.icon
-          const isActive = activeCategory === item.key
-          return (
-            <Link
-              key={item.key}
-              to={item.url}
-              onClick={closeDrawer}
-              aria-current={isActive ? "page" : undefined}
-              data-tour={item.key === "model" ? "models-nav" : undefined}
-              className={cn(
-                // 36px rows with a 20px icon, the geometry the ChatGPT sidebar uses.
-                "flex h-9 items-center gap-3 rounded-[10px] px-2.5 text-sm transition-colors",
-                isActive
-                  ? "bg-accent text-accent-foreground font-medium"
-                  : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
-              )}
-            >
-              <Icon
-                className={cn("size-5", isActive ? "opacity-100" : "opacity-60")}
-              />
-              <span className="truncate">{t(item.labelKey)}</span>
-            </Link>
-          )
-        })}
-      </div>
+      {view === "main" ? (
+        <>
+          <div className="flex shrink-0 flex-col gap-1 px-2 pb-1 pt-[max(0.75rem,env(safe-area-inset-top))] md:pt-3">
+            <div className="mb-1 flex h-8 shrink-0 items-center px-2">
+              <Link to="/" onClick={closeDrawer} aria-label="PicoClaw">
+                <img className="h-5" src="/logo_with_text.png" alt="PicoClaw" />
+              </Link>
+            </div>
+            {primaryNav.map((item) => {
+              const Icon = item.icon
+              const isActive = activeCategory === item.key
+              return (
+                <Link
+                  key={item.key}
+                  to={item.url}
+                  onClick={closeDrawer}
+                  aria-current={isActive ? "page" : undefined}
+                  data-tour={item.key === "model" ? "models-nav" : undefined}
+                  className={cn(
+                    // 36px rows with a 20px icon, the geometry the ChatGPT sidebar uses.
+                    "flex h-9 items-center gap-3 rounded-[10px] px-2.5 text-sm transition-colors",
+                    isActive
+                      ? "bg-accent text-accent-foreground font-medium"
+                      : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+                  )}
+                >
+                  <Icon
+                    className={cn("size-5", isActive ? "opacity-100" : "opacity-60")}
+                  />
+                  <span className="truncate">{t(item.labelKey)}</span>
+                </Link>
+              )
+            })}
+          </div>
 
-      <div aria-hidden className="bg-border/60 mx-3 h-px shrink-0" />
+          <div aria-hidden className="bg-border/60 mx-3 h-px shrink-0" />
 
-      <ConversationList />
+          <ConversationList />
+        </>
+      ) : (
+        <ChannelMenu
+          onBack={() => setView("main")}
+          onPick={closeDrawer}
+        />
+      )}
 
       <div className="border-border/60 shrink-0 border-t px-2 py-2">
-        <SettingsMenu />
+        <SettingsMenu onOpenChannels={() => setView("channels")} />
       </div>
       <SidebarRail />
     </Sidebar>
   )
 }
 
-function SettingsMenu() {
+// A second level of the sidebar: 返回 first, then the entries. This is the shape every
+// future submenu should take, so the way back is always in the same place.
+function ChannelMenu({
+  onBack,
+  onPick,
+}: {
+  onBack: () => void
+  onPick: () => void
+}) {
+  const { t, i18n } = useTranslation()
+  const { allChannelItems } = useSidebarChannels({
+    language: (i18n.resolvedLanguage ?? i18n.language ?? "").toLowerCase(),
+    t,
+  })
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2 pt-[max(0.75rem,env(safe-area-inset-top))] md:pt-3">
+      <button
+        type="button"
+        onClick={onBack}
+        className="text-muted-foreground hover:bg-accent/60 hover:text-foreground flex h-9 shrink-0 items-center gap-2 rounded-[10px] px-2.5 text-sm transition-colors"
+      >
+        <IconChevronLeft className="size-5 opacity-60" />
+        <span>{t("navigation.back")}</span>
+      </button>
+      <div className="text-muted-foreground/60 flex h-7 shrink-0 items-center gap-2 px-2.5 text-[11px] font-medium">
+        <IconBroadcast className="size-4 opacity-60" />
+        {t("navigation.channels_group")}
+      </div>
+      {allChannelItems.map((item) => {
+        const Icon = item.icon
+        return (
+          <Link
+            key={item.key}
+            to={item.url}
+            onClick={onPick}
+            className="text-muted-foreground hover:bg-accent/60 hover:text-foreground flex h-9 items-center gap-3 rounded-[10px] px-2.5 text-sm transition-colors"
+          >
+            <Icon className="size-4 opacity-70" />
+            <span className="truncate">{item.title}</span>
+          </Link>
+        )
+      })}
+    </div>
+  )
+}
+
+function SettingsMenu({ onOpenChannels }: { onOpenChannels: () => void }) {
   const { i18n, t } = useTranslation()
-  const { theme, toggleTheme } = useTheme()
+  const { preference, setThemePreference } = useTheme()
   const { restartRequired, restart, canStart, loading } = useGateway()
 
   const handleLogout = async () => {
@@ -147,6 +202,12 @@ function SettingsMenu() {
     { code: "cs", label: "Čeština" },
   ]
 
+  const themes: { value: ThemePreference; labelKey: string }[] = [
+    { value: "system", labelKey: "navigation.themeSystem" },
+    { value: "light", labelKey: "navigation.themeLight" },
+    { value: "dark", labelKey: "navigation.themeDark" },
+  ]
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -162,6 +223,11 @@ function SettingsMenu() {
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" side="top" className="w-52">
+        <DropdownMenuItem onSelect={onOpenChannels}>
+          <IconBroadcast className="size-4 opacity-70" />
+          {t("navigation.channels_group")}
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
         {secondaryLinks.map((item) => {
           const Icon = item.icon
           return (
@@ -194,18 +260,25 @@ function SettingsMenu() {
             ))}
           </DropdownMenuSubContent>
         </DropdownMenuSub>
-        <DropdownMenuItem onClick={toggleTheme}>
-          {theme === "dark" ? (
-            <IconSun className="size-4 opacity-70" />
-          ) : (
-            <IconMoon className="size-4 opacity-70" />
-          )}
-          {t(
-            theme === "dark"
-              ? "navigation.themeToLight"
-              : "navigation.themeToDark",
-          )}
-        </DropdownMenuItem>
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <IconSunMoon className="size-4 opacity-70" />
+            {t("navigation.theme")}
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent>
+            {themes.map((option) => (
+              <DropdownMenuItem
+                key={option.value}
+                onClick={() => setThemePreference(option.value)}
+              >
+                <span className="flex-1">{t(option.labelKey)}</span>
+                {preference === option.value && (
+                  <IconCheck className="size-3.5 opacity-70" />
+                )}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
         {restartRequired && (
           <>
             <DropdownMenuSeparator />

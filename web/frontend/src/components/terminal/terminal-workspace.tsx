@@ -531,9 +531,9 @@ function TerminalTabChip({
         }
       }}
       className={cn(
-        "group flex h-6 max-w-[190px] min-w-0 shrink-0 items-center gap-1 rounded-md px-1.5 text-xs",
+        "group relative flex h-6 max-w-[190px] min-w-0 shrink-0 items-center gap-1 rounded-md px-1.5 text-xs",
         selected && focused
-          ? "bg-primary/15 text-foreground outline-primary/60 font-medium outline-1 -outline-offset-1"
+          ? "bg-background text-foreground font-medium"
           : selected
             ? "bg-accent text-accent-foreground"
             : "text-foreground/70 hover:bg-accent/50 hover:text-foreground",
@@ -602,6 +602,14 @@ function TerminalTabChip({
       >
         <IconX className="size-3" />
       </button>
+      {selected && focused && (
+        // A straight indicator, not an inset shadow: a shadow follows the chip's
+        // rounded corners and reads as a floating crescent under the label.
+        <span
+          aria-hidden
+          className="bg-primary/70 absolute inset-x-1.5 -bottom-px h-[2px] rounded-full"
+        />
+      )}
     </div>
   )
 }

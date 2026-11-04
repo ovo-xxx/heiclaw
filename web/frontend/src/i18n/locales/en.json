@@ -17,9 +17,12 @@
     "terminal": "Terminal",
     "settings": "Settings",
     "language": "Language",
-    "themeToLight": "Switch to light theme",
-    "themeToDark": "Switch to dark theme",
-    "sections": "Sections"
+    "sections": "Sections",
+    "back": "Back",
+    "theme": "Theme",
+    "themeSystem": "Follow system",
+    "themeLight": "Light",
+    "themeDark": "Dark"
   },
   "launcherLogin": {
     "title": "Sign in",
@@ -69,7 +72,11 @@
         "max": "Max",
         "xhigh": "Extra high",
         "adaptive": "Adaptive"
-      }
+      },
+      "step1": "Reading your request…",
+      "step2": "Thinking it through…",
+      "step3": "Writing the answer…",
+      "step4": "Still working on it…"
     },
     "reasoningLabel": "Reasoning",
     "toolCallsLabel": "Tool calls",
@@ -830,7 +837,9 @@
           "base_url_placeholder": "Optional endpoint override",
           "api_key": "API Key / Token",
           "api_key_placeholder": "Enter API key, leave it blank to keep the original key",
-          "none": "Unavailable"
+          "none": "Unavailable",
+          "model": "Model",
+          "model_placeholder": "Optional model override"
         },
         "status": {
           "enabled": "Enabled",

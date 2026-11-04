@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next"
 
 import { PageHeader } from "@/components/page-header"
+import { AgentTabs } from "@/components/agent/agent-tabs"
 
 import { ResultsPanel } from "./results-panel"
 import { SearchPanel } from "./search-panel"
@@ -12,7 +13,7 @@ export function HubPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <PageHeader title={t("navigation.hub")} />
+      <PageHeader title={t("navigation.hub")} titleExtra={<AgentTabs />} />
 
       <div
         className="flex-1 overflow-auto px-6 py-6"

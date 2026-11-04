@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef } from "react"
 import { useTranslation } from "react-i18next"
 
 import { PageHeader } from "@/components/page-header"
+import { AgentTabs } from "@/components/agent/agent-tabs"
 
 import { ToolLibraryTab } from "./tool-library-tab"
 import { ToolsTabs } from "./tools-tabs"
@@ -43,7 +44,7 @@ export function ToolsPage() {
 
   return (
     <div className="bg-background flex h-full flex-col">
-      <PageHeader title={t("navigation.tools", "Tools")} />
+      <PageHeader title={t("navigation.tools", "Tools")} titleExtra={<AgentTabs />} />
       <ToolsTabs activeTab={activeTab} onChange={setActiveTab} />
 
       <div
