@@ -5,7 +5,11 @@ import { useAtomValue } from "jotai"
 import * as React from "react"
 import { useTranslation } from "react-i18next"
 
-import { type SessionSummary } from "@/api/sessions"
+import {
+  type SessionSearchMatch,
+  type SessionSummary,
+  searchSessions,
+} from "@/api/sessions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -59,6 +63,38 @@ export function ConversationList() {
   const activeSessionId = useAtomValue(activeSessionIdAtom)
   const navigate = useNavigate()
   const [query, setQuery] = React.useState("")
+  const [contentMatches, setContentMatches] =
+    React.useState<SessionSearchMatch[] | null>(null)
+  const [searching, setSearching] = React.useState(false)
+
+  // Search goes to the backend once the query is long enough: titles are filtered
+  // locally, but message content has to be read from the stored sessions.
+  React.useEffect(() => {
+    const needle = query.trim()
+    if (needle.length < 2) {
+      setContentMatches(null)
+      setSearching(false)
+      return
+    }
+    let cancelled = false
+    const timer = window.setTimeout(() => {
+      setSearching(true)
+      searchSessions(needle)
+        .then((matches) => {
+          if (!cancelled) setContentMatches(matches)
+        })
+        .catch(() => {
+          if (!cancelled) setContentMatches([])
+        })
+        .finally(() => {
+          if (!cancelled) setSearching(false)
+        })
+    }, 250)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [query])
 
   const handleDeletedActiveSession = React.useCallback(() => {
     void newChatSession()
@@ -127,7 +163,28 @@ export function ConversationList() {
       // Each conversation has its own URL, so the address bar is a shareable link to
       // what is on screen - and picking one from /config or /models brings the user
       // back to the chat route rather than appearing to do nothing.
-      navigate({ to: "/chat/$sessionId", params: { sessionId } })
+      navigate({
+        to: "/chat/$sessionId",
+        params: { sessionId },
+        search: { at: undefined },
+      })
+      if (isMobile) {
+        setOpenMobile(false)
+      }
+    },
+    [isMobile, navigate, setOpenMobile],
+  )
+
+  // A result opens the conversation at the message that matched, and the chat page
+  // scrolls to it. The local title/date filter still runs underneath for short lists.
+  const handleOpenMatch = React.useCallback(
+    (match: SessionSearchMatch) => {
+      void switchChatSession(match.session_id)
+      navigate({
+        to: "/chat/$sessionId",
+        params: { sessionId: match.session_id },
+        search: { at: match.index },
+      })
       if (isMobile) {
         setOpenMobile(false)
       }
@@ -184,6 +241,36 @@ export function ConversationList() {
         aria-label={t("chat.conversations")}
         className="min-h-0 flex-1 overflow-y-auto px-3 pb-2"
       >
+        {contentMatches !== null ? (
+          <div className="flex flex-col gap-0.5 pt-1">
+            {searching && contentMatches.length === 0 && (
+              <p className="text-muted-foreground px-1 py-2 text-xs">
+                {t("chat.searching")}
+              </p>
+            )}
+            {!searching && contentMatches.length === 0 && (
+              <p className="text-muted-foreground px-1 py-2 text-xs">
+                {t("chat.noMatchingConversations")}
+              </p>
+            )}
+            {contentMatches.map((match, index) => (
+              <button
+                key={`${match.session_id}-${match.index}-${index}`}
+                type="button"
+                onClick={() => handleOpenMatch(match)}
+                className="hover:bg-accent/60 flex w-full flex-col gap-0.5 rounded-md px-2 py-1.5 text-left transition-colors"
+              >
+                <span className="text-foreground/85 truncate text-xs font-medium">
+                  {match.title || t("chat.untitledConversation")}
+                </span>
+                <span className="text-muted-foreground line-clamp-2 text-[11px] leading-snug">
+                  {match.role === "user" ? "› " : ""}
+                  {match.snippet}
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : (
         <SidebarGroup className="p-0">
           <SidebarGroupContent>
             {loadError && (
@@ -270,6 +357,7 @@ export function ConversationList() {
             )}
           </SidebarGroupContent>
         </SidebarGroup>
+        )}
       </div>
     </div>
   )

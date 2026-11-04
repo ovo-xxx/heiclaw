@@ -1,4 +1,5 @@
 import { IconTerminal2 } from "@tabler/icons-react"
+import { useSearch } from "@tanstack/react-router"
 import { useAtom } from "jotai"
 import {
   type ChangeEvent,
@@ -199,6 +200,27 @@ export function ChatPage({ sessionId }: { sessionId?: string } = {}) {
     }
     void switchChatSession(routedSessionId)
   }, [routedSessionId, activeSessionId])
+
+  // A content search result carries `at`: the message to land on once the session is
+  // loaded. The flash is the only affordance that tells the eye where the match is.
+  const searchParams = useSearch({ strict: false }) as { at?: number }
+  const jumpIndex = searchParams.at
+  const [flashIndex, setFlashIndex] = useState<number | null>(null)
+  useEffect(() => {
+    if (jumpIndex === undefined || messages.length === 0) {
+      return
+    }
+    const element = document.querySelector(
+      `[data-message-index="${jumpIndex}"]`,
+    )
+    if (!element) {
+      return
+    }
+    element.scrollIntoView({ block: "center", behavior: "smooth" })
+    setFlashIndex(jumpIndex)
+    const timer = window.setTimeout(() => setFlashIndex(null), 2400)
+    return () => window.clearTimeout(timer)
+  }, [jumpIndex, messages.length])
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -432,7 +454,15 @@ export function ChatPage({ sessionId }: { sessionId?: string } = {}) {
                 : undefined
 
             return (
-              <div key={msg.id} className="flex w-full">
+              <div
+                key={msg.id}
+                data-message-index={item.index}
+                className={cn(
+                  "flex w-full rounded-xl transition-shadow duration-500",
+                  flashIndex === item.index &&
+                    "ring-2 ring-primary/50 ring-offset-2 ring-offset-background",
+                )}
+              >
                 {item.type === "assistant" ? (
                   <AssistantMessage
                     content={msg.content}

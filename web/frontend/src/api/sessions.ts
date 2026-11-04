@@ -191,3 +191,27 @@ export async function deleteSession(id: string): Promise<void> {
     throw new Error(`Failed to delete session ${id}: ${res.status}`)
   }
 }
+
+export interface SessionSearchMatch {
+  session_id: string
+  title: string
+  updated: string
+  role: string
+  index: number
+  snippet: string
+}
+
+// Searches message content across every stored conversation. The index is the
+// position of the matching message in the detail endpoint's visible list, which is
+// what the chat page scrolls to.
+export async function searchSessions(
+  query: string,
+): Promise<SessionSearchMatch[]> {
+  const params = new URLSearchParams({ q: query })
+  const res = await launcherFetch(`/api/sessions/search?${params.toString()}`)
+  if (!res.ok) {
+    throw new Error(`Failed to search sessions: ${res.status}`)
+  }
+  const body = (await res.json()) as { matches?: SessionSearchMatch[] }
+  return body.matches ?? []
+}

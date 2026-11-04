@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/sipeed/picoclaw/pkg/config"
 	"github.com/sipeed/picoclaw/pkg/memory"
@@ -23,8 +24,131 @@ import (
 // registerSessionRoutes binds session list and detail endpoints to the ServeMux.
 func (h *Handler) registerSessionRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/sessions", h.handleListSessions)
+	mux.HandleFunc("GET /api/sessions/search", h.handleSearchSessions)
 	mux.HandleFunc("GET /api/sessions/{id}", h.handleGetSession)
 	mux.HandleFunc("DELETE /api/sessions/{id}", h.handleDeleteSession)
+}
+
+// sessionSearchMatch is one message that contains the query, with the index the panel
+// uses to scroll to it. The index counts the same visible messages the detail endpoint
+// returns, so a result can be opened exactly where it matched.
+type sessionSearchMatch struct {
+	SessionID string `json:"session_id"`
+	Title     string `json:"title"`
+	Updated   string `json:"updated"`
+	Role      string `json:"role"`
+	Index     int    `json:"index"`
+	Snippet   string `json:"snippet"`
+}
+
+const (
+	searchSnippetBefore = 40
+	searchSnippetAfter  = 80
+	searchMatchesLimit  = 80
+)
+
+// handleSearchSessions searches message content across every stored conversation.
+//
+//	GET /api/sessions/search?q=...
+func (h *Handler) handleSearchSessions(w http.ResponseWriter, r *http.Request) {
+	query := strings.TrimSpace(r.URL.Query().Get("q"))
+	writeJSON := func(matches []sessionSearchMatch) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"matches": matches, "query": query})
+	}
+	if query == "" {
+		writeJSON([]sessionSearchMatch{})
+		return
+	}
+
+	dir, toolFeedbackMaxArgsLength, err := h.sessionRuntimeSettings()
+	if err != nil {
+		http.Error(w, "failed to resolve sessions directory", http.StatusInternalServerError)
+		return
+	}
+	if _, err := os.ReadDir(dir); err != nil {
+		writeJSON([]sessionSearchMatch{})
+		return
+	}
+
+	needle := strings.ToLower(query)
+	matches := []sessionSearchMatch{}
+
+	type loaded struct {
+		id      string
+		sess    sessionFile
+		updated time.Time
+	}
+	sessions := []loaded{}
+	if refs, findErr := h.findPicoJSONLSessions(dir); findErr == nil {
+		for _, ref := range refs {
+			sess, loadErr := h.readJSONLSession(dir, ref.Key)
+			if loadErr != nil || isEmptySession(sess) {
+				continue
+			}
+			sessions = append(sessions, loaded{id: ref.ID, sess: sess, updated: sess.Updated})
+		}
+	}
+	if legacyRefs, findErr := h.findLegacyPicoSessions(dir); findErr == nil {
+		for _, ref := range legacyRefs {
+			sess, loadErr := h.readLegacySession(ref.Path)
+			if loadErr != nil || isEmptySession(sess) {
+				continue
+			}
+			sessions = append(sessions, loaded{id: ref.ID, sess: sess, updated: sess.Updated})
+		}
+	}
+	sort.Slice(sessions, func(i, j int) bool {
+		return sessions[i].updated.After(sessions[j].updated)
+	})
+
+	for _, item := range sessions {
+		transcript := visibleSessionMessages(item.sess.Messages, toolFeedbackMaxArgsLength)
+		title := buildSessionListItem(item.id, item.sess, toolFeedbackMaxArgsLength).Title
+		for index, message := range transcript {
+			snippet, ok := searchSnippet(message.Content, needle)
+			if !ok {
+				continue
+			}
+			matches = append(matches, sessionSearchMatch{
+				SessionID: item.id,
+				Title:     title,
+				Updated:   item.updated.Format(time.RFC3339),
+				Role:      message.Role,
+				Index:     index,
+				Snippet:   snippet,
+			})
+			if len(matches) >= searchMatchesLimit {
+				writeJSON(matches)
+				return
+			}
+		}
+	}
+	writeJSON(matches)
+}
+
+// searchSnippet returns a one-line window around the first case-insensitive match,
+// cut on rune boundaries so a multibyte character is never split.
+func searchSnippet(content, needle string) (string, bool) {
+	idx := strings.Index(strings.ToLower(content), needle)
+	if idx < 0 {
+		return "", false
+	}
+	start := idx - searchSnippetBefore
+	if start < 0 {
+		start = 0
+	}
+	for start > 0 && !utf8.RuneStart(content[start]) {
+		start--
+	}
+	end := idx + len(needle) + searchSnippetAfter
+	if end > len(content) {
+		end = len(content)
+	}
+	for end < len(content) && !utf8.RuneStart(content[end]) {
+		end++
+	}
+	return strings.Join(strings.Fields(content[start:end]), " "), true
 }
 
 // sessionFile mirrors the on-disk session JSON structure from pkg/session.
