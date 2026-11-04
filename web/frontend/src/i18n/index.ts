@@ -53,7 +53,7 @@ i18n
     },
   })
 
-i18n.on("languageChanged", (lng) => {
+function syncDayjsLocale(lng: string) {
   if (lng.startsWith("zh")) {
     dayjs.locale("zh-cn")
   } else if (lng.startsWith("pt")) {
@@ -65,6 +65,12 @@ i18n.on("languageChanged", (lng) => {
   } else {
     dayjs.locale("en")
   }
-})
+}
+
+i18n.on("languageChanged", syncDayjsLocale)
+// The detector resolves the language during init, before the listener exists, so the
+// first paint kept dayjs on "en" and relative times read "25 minutes ago" in a Chinese
+// panel until something changed the language.
+syncDayjsLocale(i18n.resolvedLanguage ?? i18n.language ?? "en")
 
 export default i18n

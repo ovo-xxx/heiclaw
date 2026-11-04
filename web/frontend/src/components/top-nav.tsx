@@ -50,9 +50,13 @@ export function TopNav() {
             key={category.key}
             to={category.items[0]?.url ?? "/"}
             aria-current={isActive ? "page" : undefined}
+            aria-label={t(category.labelKey)}
             data-tour={category.key === "model" ? "models-nav" : undefined}
             className={cn(
-              "flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-sm transition-colors",
+              // Touch needs a square target and no label: at 390px the labelled row
+              // collapsed items to zero width and cut 模型 down to one character.
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm transition-colors",
+              "sm:h-8 sm:w-auto sm:justify-start sm:gap-1.5 sm:px-2.5",
               isActive
                 ? "bg-accent text-accent-foreground font-medium"
                 : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
@@ -60,11 +64,13 @@ export function TopNav() {
           >
             <Icon
               className={cn(
-                "size-3.5",
+                "size-4 sm:size-3.5",
                 isActive ? "opacity-100" : "opacity-60",
               )}
             />
-            <span className="whitespace-nowrap">{t(category.labelKey)}</span>
+            <span className="hidden whitespace-nowrap sm:inline">
+              {t(category.labelKey)}
+            </span>
           </Link>
         )
       })}
