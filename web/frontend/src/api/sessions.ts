@@ -124,6 +124,11 @@ export interface SessionDetail {
       diff?: string
       additions: number
       deletions: number
+      hunks?: string[]
+      old_path?: string
+      new_path?: string
+      file_lang?: string
+      binary?: boolean
     }[]
     media?: string[]
     attachments?: {

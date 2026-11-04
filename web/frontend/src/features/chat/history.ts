@@ -1,11 +1,17 @@
 import { getSessionHistory } from "@/api/sessions"
+import { parseFileChangeEntry } from "@/features/chat/protocol"
 import { normalizeUnixTimestamp } from "@/features/chat/state"
 import {
   parseToolCallsValue,
   toolCallsSignature,
 } from "@/features/chat/tool-calls"
 import { parseTurnStats } from "@/features/chat/turn-stats"
-import type { ChatAttachment, ChatMessage, ContextUsage } from "@/store/chat"
+import type {
+  ChatAttachment,
+  ChatMessage,
+  ContextUsage,
+  TurnFileChange,
+} from "@/store/chat"
 
 function toChatAttachments({
   media,
@@ -58,7 +64,11 @@ export async function loadSessionMessages(sessionId: string): Promise<{
         ? parseTurnStats(message.turn_stats)
         : undefined,
     fileChanges:
-      message.role === "assistant" ? message.file_changes : undefined,
+      message.role === "assistant"
+        ? message.file_changes
+            ?.map(parseFileChangeEntry)
+            .filter((change): change is TurnFileChange => change !== undefined)
+        : undefined,
     toolCalls:
       message.role === "assistant"
         ? parseToolCallsValue(message.tool_calls)

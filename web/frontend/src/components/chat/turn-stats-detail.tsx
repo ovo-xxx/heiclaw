@@ -16,9 +16,11 @@ import {
   callOutputRate,
   formatCost,
   formatDuration,
+  formatPercent,
   formatTokenCount,
   formatTokenExact,
   formatTokenRate,
+  turnCacheHitPercent,
   turnCostText,
   turnOutputRate,
 } from "@/features/chat/turn-stats"
@@ -222,6 +224,7 @@ export function TurnStatsDetail({ stats, modelName }: TurnStatsDetailProps) {
   const tokens = stats.tokens
   const turnRate = turnOutputRate(stats)
   const cost = turnCostText(stats)
+  const cacheHit = turnCacheHitPercent(stats)
   const droppedCalls = stats.dropped_llm_call_count ?? 0
   const droppedTools = stats.dropped_tool_count ?? 0
 
@@ -298,6 +301,14 @@ export function TurnStatsDetail({ stats, modelName }: TurnStatsDetailProps) {
             <TokenCell
               label={t("chat.turnStats.cacheRead")}
               value={tokens.cache_read_tokens}
+            />
+          )}
+          {cacheHit !== undefined && (
+            <StatCell
+              label={t("chat.turnStats.cacheHitRate")}
+              value={formatPercent(cacheHit)}
+              title={t("chat.turnStats.cacheHitRateHint")}
+              className="text-foreground/80"
             />
           )}
           {tokens.cache_creation_tokens !== undefined && (

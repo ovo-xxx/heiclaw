@@ -110,37 +110,52 @@ function parseFileChanges(
 
   const changes: TurnFileChange[] = []
   for (const item of raw) {
-    if (!item || typeof item !== "object") {
-      continue
+    const change = parseFileChangeEntry(item)
+    if (change) {
+      changes.push(change)
     }
-    const change = item as Record<string, unknown>
-    const path = typeof change.path === "string" ? change.path : ""
-    if (!path) {
-      continue
-    }
-    const hunks = Array.isArray(change.hunks)
-      ? change.hunks.filter((h): h is string => typeof h === "string")
-      : undefined
-    changes.push({
-      path,
-      ...(typeof change.diff === "string" ? { diff: change.diff } : {}),
-      additions: Number(change.additions) || 0,
-      deletions: Number(change.deletions) || 0,
-      ...(hunks && hunks.length > 0 ? { hunks } : {}),
-      ...(typeof change.old_path === "string" && change.old_path
-        ? { oldPath: change.old_path }
-        : {}),
-      ...(typeof change.new_path === "string" && change.new_path
-        ? { newPath: change.new_path }
-        : {}),
-      ...(typeof change.file_lang === "string" && change.file_lang
-        ? { fileLang: change.file_lang }
-        : {}),
-      ...(change.binary === true ? { binary: true } : {}),
-    })
   }
 
   return changes.length > 0 ? changes : undefined
+}
+
+/**
+ * One `file_changes` entry, from the WebSocket or from a stored session. Both carry
+ * the same snake_case keys, so the panel reads them through this one function: the
+ * history loader used to hand the raw objects over, which left the language and the
+ * header paths undefined and made a reloaded diff lose its highlighting.
+ */
+export function parseFileChangeEntry(
+  item: unknown,
+): TurnFileChange | undefined {
+  if (!item || typeof item !== "object") {
+    return undefined
+  }
+  const change = item as Record<string, unknown>
+  const path = typeof change.path === "string" ? change.path : ""
+  if (!path) {
+    return undefined
+  }
+  const hunks = Array.isArray(change.hunks)
+    ? change.hunks.filter((h): h is string => typeof h === "string")
+    : undefined
+  return {
+    path,
+    ...(typeof change.diff === "string" ? { diff: change.diff } : {}),
+    additions: Number(change.additions) || 0,
+    deletions: Number(change.deletions) || 0,
+    ...(hunks && hunks.length > 0 ? { hunks } : {}),
+    ...(typeof change.old_path === "string" && change.old_path
+      ? { oldPath: change.old_path }
+      : {}),
+    ...(typeof change.new_path === "string" && change.new_path
+      ? { newPath: change.new_path }
+      : {}),
+    ...(typeof change.file_lang === "string" && change.file_lang
+      ? { fileLang: change.file_lang }
+      : {}),
+    ...(change.binary === true ? { binary: true } : {}),
+  }
 }
 
 function parseTurnUsage(

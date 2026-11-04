@@ -85,6 +85,8 @@
       "output": "Output",
       "total": "Total",
       "cacheRead": "Cache read",
+      "cacheHitRate": "Cache hit",
+      "cacheHitRateHint": "Share of the prompt the provider served from cache: cache read ÷ (fresh input + cache read).",
       "perMillion": "/M tokens",
       "cacheWrite": "Cache write",
       "reasoning": "Reasoning",

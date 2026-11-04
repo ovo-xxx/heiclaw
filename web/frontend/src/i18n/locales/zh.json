@@ -85,6 +85,8 @@
       "output": "输出",
       "total": "合计",
       "cacheRead": "缓存命中",
+      "cacheHitRate": "命中占比",
+      "cacheHitRateHint": "提示词中由缓存直接给出的比例：缓存命中 ÷（新输入 + 缓存命中）。",
       "perMillion": "/百万",
       "cacheWrite": "缓存写入",
       "reasoning": "推理",

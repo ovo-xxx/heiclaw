@@ -11,7 +11,7 @@
 import { DiffModeEnum, DiffView } from "@git-diff-view/react"
 import "@git-diff-view/react/styles/diff-view.css"
 import { IconChevronRight } from "@tabler/icons-react"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 
 import { useHtmlTheme } from "@/hooks/use-theme"
@@ -59,6 +59,20 @@ export function FileDiff({
   const hasHunks = hunks !== undefined && hunks.length > 0
   const name = newPath ?? path
 
+  // git-diff-view parses each entry of `hunks` as its own diff, and its parser only
+  // recognises an "@@" block after it has read a `--- / +++` file header. The backend
+  // strips that header - the card draws the path itself - so the header is re-attached
+  // here; without it every hunk parses to zero lines and the body renders empty.
+  const diffData = useMemo(() => {
+    const oldName = oldPath ?? path
+    const newName = newPath ?? path
+    return {
+      oldFile: { fileName: oldName, fileLang: fileLang ?? null, content: null },
+      newFile: { fileName: newName, fileLang: fileLang ?? null, content: null },
+      hunks: [`--- a/${oldName}\n+++ b/${newName}\n${(hunks ?? []).join("\n")}`],
+    }
+  }, [hunks, oldPath, newPath, path, fileLang])
+
   return (
     <div
       className={cn(
@@ -98,19 +112,7 @@ export function FileDiff({
         (hasHunks ? (
           <DiffView
             key={theme}
-            data={{
-              oldFile: {
-                fileName: oldPath ?? path,
-                fileLang: fileLang ?? null,
-                content: null,
-              },
-              newFile: {
-                fileName: newPath ?? path,
-                fileLang: fileLang ?? null,
-                content: null,
-              },
-              hunks: hunks!,
-            }}
+            data={diffData}
             diffViewMode={DiffModeEnum.Unified}
             diffViewTheme={theme === "dark" ? "dark" : "light"}
             diffViewHighlight

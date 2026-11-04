@@ -349,6 +349,27 @@ export function turnOutputRate(stats?: TurnStats): number | undefined {
   return (tokens * 1000) / windowMs
 }
 
+// Cache hit share of the prompt. InputTokens is the fresh part only and
+// CacheReadTokens the part served from cache, so the two together are what the
+// provider read as input. Undefined when the turn never reported a cache count:
+// "0%" would claim the cache missed, when the truth is it was never measured.
+export function turnCacheHitPercent(stats?: TurnStats): number | undefined {
+  const tokens = stats?.tokens
+  const cached = tokens?.cache_read_tokens
+  if (cached === undefined) {
+    return undefined
+  }
+  const prompt = (tokens?.input_tokens ?? 0) + cached
+  if (prompt <= 0) {
+    return undefined
+  }
+  return (cached / prompt) * 100
+}
+
+export function formatPercent(value: number): string {
+  return `${value.toFixed(value >= 10 ? 0 : 1)}%`
+}
+
 export function formatTokenRate(perSecond: number): string {
   const digits = perSecond >= 100 ? 0 : 1
   return `${perSecond.toFixed(digits)} tok/s`
