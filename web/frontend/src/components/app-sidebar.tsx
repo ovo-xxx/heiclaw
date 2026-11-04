@@ -21,6 +21,7 @@ import { postLauncherDashboardLogout } from "@/api/launcher-auth"
 import { ConversationList } from "@/components/chat/conversation-list"
 import { ConversationSearch } from "@/components/chat/conversation-search"
 import { useStartNewChat } from "@/components/chat/use-start-new-chat"
+import { useBranding } from "@/hooks/use-branding"
 import { Sidebar, SidebarRail, useSidebar } from "@/components/ui/sidebar"
 import {
   DropdownMenu,
@@ -66,6 +67,8 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const { isMobile, setOpenMobile } = useSidebar()
   const [view, setView] = React.useState<SidebarView>("main")
   const startNewChat = useStartNewChat()
+  const branding = useBranding()
+  const [logoFailed, setLogoFailed] = React.useState(false)
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   })
@@ -90,10 +93,15 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
               <button
                 type="button"
                 onClick={startNewChat}
-                aria-label="PicoClaw"
+                aria-label={branding.name}
                 className="rounded-sm transition-opacity hover:opacity-80"
               >
-                <img className="h-7" src="/logo_with_text.png" alt="PicoClaw" />
+                <img
+                  className="h-7"
+                  src={logoFailed ? "/logo_with_text.png" : branding.logoUrl}
+                  onError={() => setLogoFailed(true)}
+                  alt={branding.name}
+                />
               </button>
             </div>
             {/* New chat and search sit under the logo, the way the ChatGPT sidebar

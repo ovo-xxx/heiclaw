@@ -145,6 +145,22 @@ until it is added, a weekday in an unlisted holiday is billed at the peak rate. 
 a wrong-looking figure you can see and explain, not a silent discount - so update the
 list when the notice is published.
 
+## Your own name and logo
+
+A deployment can carry its own brand instead of PicoClaw's:
+
+```json
+"branding": { "name": "Acme", "logo_path": "branding/acme.png" }
+```
+
+`logo_path` is absolute or relative to this config file; leaving either field empty keeps
+the bundled default. The launcher serves the image at `/api/branding/logo` and reports
+`{ name, logo_url }` at `/api/branding`, which is public so the login page can draw the
+mark before anyone signs in. `name` becomes the tab title, the sidebar logo's alt text,
+the speaker label above assistant messages, and the login page title area. Replacing the
+file is enough - the URL carries its mtime, so the panel picks the new image up on the
+next load.
+
 ## See also
 
 - [Configuration Guide](configuration.md) for the launcher's own settings.

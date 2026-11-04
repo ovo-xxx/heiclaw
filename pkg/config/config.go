@@ -52,6 +52,8 @@ type Config struct {
 	Heartbeat HeartbeatConfig `json:"heartbeat"           yaml:"-"`
 	Devices   DevicesConfig   `json:"devices"             yaml:"-"`
 	Voice     VoiceConfig     `json:"voice"               yaml:"-"`
+	// Branding lets a deployment carry its own name and logo instead of PicoClaw's.
+	Branding BrandingConfig `json:"branding,omitempty" yaml:"-"`
 	// BuildInfo contains build-time version information
 	BuildInfo BuildInfo `json:"build_info,omitempty" yaml:"-"`
 
@@ -241,6 +243,16 @@ type ProcessHookConfig struct {
 	Env       map[string]string `json:"env,omitempty"`
 	Observe   []string          `json:"observe,omitempty"`
 	Intercept []string          `json:"intercept,omitempty"`
+}
+
+// BrandingConfig is a deployment's own name and wordmark. Empty fields keep the
+// bundled defaults, so an unconfigured install looks like PicoClaw.
+type BrandingConfig struct {
+	// Name replaces "PicoClaw" in the tab title, the sidebar and the speaker label.
+	Name string `json:"name,omitempty"`
+	// LogoPath is an image on disk: absolute, or relative to this config file. The
+	// launcher serves it at /api/branding/logo; empty keeps the bundled wordmark.
+	LogoPath string `json:"logo_path,omitempty"`
 }
 
 // BuildInfo contains build-time version information

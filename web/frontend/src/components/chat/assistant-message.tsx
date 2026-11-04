@@ -8,6 +8,8 @@ import {
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
 
+import { useBranding } from "@/hooks/use-branding"
+
 import type { TurnStats } from "@/api/sessions"
 import { FileDiff } from "@/components/chat/file-diff"
 import { MarkdownBody } from "@/components/chat/markdown-body"
@@ -42,6 +44,7 @@ export function AssistantMessage({
   fileChanges = [],
 }: AssistantMessageProps) {
   const { t } = useTranslation()
+  const branding = useBranding()
   const { copy, isCopied } = useCopyToClipboard()
   const hasText = content.trim().length > 0
   const imageAttachments = attachments.filter(
@@ -69,7 +72,7 @@ export function AssistantMessage({
     <div className="group flex w-full flex-col gap-1.5">
       <div className="text-muted-foreground/60 flex items-center justify-between gap-2 px-1 text-xs opacity-70">
         <div className="flex items-center gap-2">
-          <span>PicoClaw</span>
+          <span>{branding.name}</span>
           {trimmedModelName && (
             <>
               <span className="opacity-50">•</span>

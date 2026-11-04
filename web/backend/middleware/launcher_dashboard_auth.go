@@ -266,6 +266,8 @@ func isPublicLauncherDashboardPath(method, p string) bool {
 		return method == http.MethodPost
 	case "/api/auth/status":
 		return method == http.MethodGet
+	case "/api/branding", "/api/branding/logo":
+		return method == http.MethodGet
 	case "/api/auth/setup":
 		return method == http.MethodPost
 	}
@@ -286,7 +288,10 @@ func isPublicLauncherDashboardStatic(method, p string) bool {
 	}
 	switch p {
 	case "/favicon.ico", "/favicon.svg", "/favicon-96x96.png",
-		"/apple-touch-icon.png", "/site.webmanifest", "/robots.txt":
+		"/apple-touch-icon.png", "/site.webmanifest", "/robots.txt",
+		// The login page draws the wordmark before a session exists; the bundled
+		// default has to be reachable for an unconfigured deployment.
+		"/logo_with_text.png":
 		return true
 	default:
 		return false

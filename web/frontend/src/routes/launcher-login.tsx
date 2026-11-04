@@ -23,11 +23,13 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useBranding } from "@/hooks/use-branding"
 import { useTheme } from "@/hooks/use-theme"
 
 function LauncherLoginPage() {
   const { t, i18n } = useTranslation()
   const { theme, toggleTheme } = useTheme()
+  const branding = useBranding()
   const [password, setPassword] = React.useState("")
   const [submitting, setSubmitting] = React.useState(false)
   const [error, setError] = React.useState("")
@@ -111,7 +113,9 @@ function LauncherLoginPage() {
         </Button>
       </header>
 
-      <div className="flex flex-1 items-center justify-center p-4">
+      <div className="flex flex-1 flex-col items-center justify-center gap-6 p-4">
+        <img src={branding.logoUrl} alt={branding.name} className="h-8" />
+
         <Card className="w-full max-w-md" size="sm">
           <CardHeader>
             <CardTitle>{t("launcherLogin.title")}</CardTitle>
