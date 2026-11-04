@@ -44,6 +44,7 @@ import {
   getTransferredFiles,
   hasFileTransfer,
 } from "@/features/chat/image-input"
+import { switchChatSession } from "@/features/chat/controller"
 import { displayModelName } from "@/features/chat/model-display"
 import { turnElapsedMs, turnStartMessage } from "@/features/chat/turn-stats"
 import { useChatModels } from "@/hooks/use-chat-models"
@@ -112,7 +113,7 @@ function resolveChatInputDisabledReason({
   return null
 }
 
-export function ChatPage() {
+export function ChatPage({ sessionId }: { sessionId?: string } = {}) {
   const { t } = useTranslation()
   const scrollRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -139,7 +140,7 @@ export function ChatPage() {
     { value: "all", label: t("chat.assistantDetailVisibility.all") },
   ]
 
-  const { messages, connectionState, isTyping, contextUsage, sendMessage } =
+  const { messages, connectionState, isTyping, contextUsage, sendMessage, activeSessionId } =
     usePicoChat()
 
   const { state: gwState } = useGateway()
@@ -187,6 +188,17 @@ export function ChatPage() {
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     syncScrollState(e.currentTarget)
   }
+
+  // /chat/<id> is the conversation's address: opening it loads that session, and the
+  // list updates the URL as the user picks another one. switchChatSession already
+  // ignores the id that is active, so re-renders do not refetch.
+  const routedSessionId = sessionId?.trim() ?? ""
+  useEffect(() => {
+    if (!routedSessionId || routedSessionId === activeSessionId) {
+      return
+    }
+    void switchChatSession(routedSessionId)
+  }, [routedSessionId, activeSessionId])
 
   useEffect(() => {
     if (scrollRef.current) {

@@ -124,9 +124,10 @@ export function ConversationList() {
   const handleSelectSession = React.useCallback(
     (sessionId: string) => {
       void switchChatSession(sessionId)
-      // The conversation lives on the chat route; picking one from /config or
-      // /models must bring the user back there or the click appears to do nothing.
-      navigate({ to: "/" })
+      // Each conversation has its own URL, so the address bar is a shareable link to
+      // what is on screen - and picking one from /config or /models brings the user
+      // back to the chat route rather than appearing to do nothing.
+      navigate({ to: "/chat/$sessionId", params: { sessionId } })
       if (isMobile) {
         setOpenMobile(false)
       }
