@@ -15,7 +15,19 @@ func cst(year int, month time.Month, day, hour, minute int) time.Time {
 	return time.Date(year, month, day, hour, minute, 0, 0, time.FixedZone("CST", 8*3600))
 }
 
+// The band is a property of the row, so the tests read it off the row the panel
+// would resolve rather than off the package.
+func deepSeekRow(t *testing.T) Table {
+	t.Helper()
+	table, ok := TableFor("deepseek-flash")
+	if !ok {
+		t.Fatal("no flash row to test the band against")
+	}
+	return table
+}
+
 func TestIsPeakWindows(t *testing.T) {
+	row := deepSeekRow(t)
 	cases := []struct {
 		name string
 		at   time.Time
@@ -39,22 +51,67 @@ func TestIsPeakWindows(t *testing.T) {
 		{"uncovered year falls back to weekday rule", cst(2027, time.March, 3, 10, 0), true},
 	}
 	for _, tc := range cases {
-		if got := IsPeak(tc.at); got != tc.want {
+		if got := row.IsPeak(tc.at); got != tc.want {
 			t.Errorf("%s: IsPeak(%s) = %v, want %v", tc.name, tc.at.Format(time.RFC3339), got, tc.want)
 		}
 	}
 }
 
-// The store and the request clock can be UTC; the band is decided in Beijing time
-// no matter which zone the instant arrived in.
+// The store and the request clock can be UTC; the band is decided in the zone the
+// row names, no matter which zone the instant arrived in.
 func TestIsPeakConvertsFromUTC(t *testing.T) {
+	row := deepSeekRow(t)
 	utc := time.Date(2026, time.November, 4, 2, 30, 0, 0, time.UTC) // 10:30 in Beijing
-	if !IsPeak(utc) {
+	if !row.IsPeak(utc) {
 		t.Fatalf("IsPeak(%s) = false, want true (10:30 Beijing)", utc.Format(time.RFC3339))
 	}
 	lateUTC := time.Date(2026, time.November, 3, 20, 30, 0, 0, time.UTC) // 04:30 next day
-	if IsPeak(lateUTC) {
+	if row.IsPeak(lateUTC) {
 		t.Fatalf("IsPeak(%s) = true, want false (04:30 Beijing)", lateUTC.Format(time.RFC3339))
+	}
+}
+
+// A row that bills one rate all day carries no band, and the engine must not invent
+// a peak hour for it. This is the shape every non-DeepSeek provider has today.
+func TestRowWithoutBandNeverPeaks(t *testing.T) {
+	single := Table{
+		Name:     "flat-model",
+		Currency: "USD",
+		OffPeak:  Rate{InputPerMTok: 1},
+		Peak:     Rate{InputPerMTok: 9},
+	}
+	for _, at := range []time.Time{
+		time.Date(2026, time.November, 4, 10, 0, 0, 0, time.UTC),
+		time.Date(2026, time.November, 4, 15, 0, 0, 0, time.UTC),
+	} {
+		if single.IsPeak(at) {
+			t.Errorf("bandless row peaked at %s", at.Format(time.RFC3339))
+		}
+	}
+
+	// A row whose window is stated in another zone is judged there, not in Beijing:
+	// 13:30 UTC is inside this row's 13:00-17:00 UTC band.
+	other := Table{
+		Name:     "other-provider",
+		Currency: "USD",
+		OffPeak:  Rate{InputPerMTok: 1},
+		Peak:     Rate{InputPerMTok: 2},
+		Band:     newBand(0, []string{"13:00-17:00"}, nil),
+	}
+	if !other.IsPeak(time.Date(2026, time.November, 4, 13, 30, 0, 0, time.UTC)) {
+		t.Error("13:30 UTC should be peak for a UTC-stated band")
+	}
+	if other.IsPeak(time.Date(2026, time.November, 4, 17, 0, 0, 0, time.UTC)) {
+		t.Error("the range is half-open, 17:00 itself is off-peak")
+	}
+}
+
+// A rule the provider wrote in a form we cannot read must degrade to "never peak",
+// not to a guessed window, because guessing would bill the wrong rate.
+func TestBandIgnoresUnparsableWindows(t *testing.T) {
+	band := newBand(8*3600, []string{"25:00-26:00", "morning", "09:00-08:00"}, nil)
+	if band.IsPeak(cst(2026, time.November, 4, 10, 0)) {
+		t.Fatal("a band of unusable windows must never peak")
 	}
 }
 
