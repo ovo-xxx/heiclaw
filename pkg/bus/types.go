@@ -1,5 +1,7 @@
 package bus
 
+import "github.com/sipeed/picoclaw/pkg/providers"
+
 // SenderInfo provides structured sender identity information.
 type SenderInfo struct {
 	Platform    string `json:"platform,omitempty"`     // "telegram", "discord", "slack", ...
@@ -82,6 +84,13 @@ type OutboundMessage struct {
 	Content          string         `json:"content"`
 	ReplyToMessageID string         `json:"reply_to_message_id,omitempty"`
 	ContextUsage     *ContextUsage  `json:"context_usage,omitempty"`
+	// The finished turn's accounting, carried so a panel can show tokens, money and
+	// changed files on the frame that delivers the answer instead of only after the
+	// session is re-read. Set on the final outbound only; interim messages leave it
+	// nil so a thought or tool note never claims the turn's numbers.
+	Usage       *providers.UsageInfo   `json:"usage,omitempty"`
+	FileChanges []providers.FileChange `json:"file_changes,omitempty"`
+	Stats       *providers.TurnStats   `json:"turn_stats,omitempty"`
 }
 
 // MediaPart describes a single media attachment to send.

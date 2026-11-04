@@ -47,7 +47,10 @@ type AgentLoop struct {
 	hooks              *HookManager
 
 	// Runtime state
-	running        atomic.Bool
+	running atomic.Bool
+	// turnAccounting carries a finished turn's numbers from the pipeline to whichever
+	// publish path delivers the answer, keyed by session.
+	turnAccounting sync.Map
 	contextManager ContextManager
 	fallback       *providers.FallbackChain
 	channelManager interfaces.ChannelManager
@@ -615,7 +618,9 @@ func (al *AgentLoop) runAgentLoop(
 			}
 			msg.Context.Raw["model_name"] = modelName
 		}
-		markFinalOutbound(&msg)
+		markFinalOutbound(ts, &msg)
+		// Consumed by this publish; a later message must not inherit these numbers.
+		al.takeTurnAccounting(sessionKey)
 		al.bus.PublishOutbound(ctx, msg)
 	}
 

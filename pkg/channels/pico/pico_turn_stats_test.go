@@ -136,7 +136,7 @@ func TestStreamerEmitsTurnStatsOnFinalize(t *testing.T) {
 	s.SetTurnStats(sampleTurnStats())
 
 	s.mu.Lock()
-	err := s.sendLocked(context.Background(), "answer", nil)
+	err := s.sendLocked(context.Background(), "answer", nil, false)
 	s.mu.Unlock()
 	if err != nil {
 		t.Fatalf("sendLocked: %v", err)

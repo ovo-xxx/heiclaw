@@ -31,6 +31,7 @@ func (p *Pipeline) Finalize(
 			return al.abortTurn(ts)
 		}
 		ts.setPhase(TurnPhaseCompleted)
+		al.rememberTurnAccounting(ts.sessionKey, ts.accountingFor(nil))
 		return turnResult{
 			finalContent: finalContent,
 			modelName:    exec.llmModelName,
@@ -45,6 +46,9 @@ func (p *Pipeline) Finalize(
 	// persisted turn_stats, the streamed context_usage and the final edit all
 	// carry the same numbers.
 	contextUsage := computeContextUsage(ts.agent, ts.sessionKey)
+	// The answer can be published by a helper that only knows the session key, so the
+	// turn's numbers are parked here before anything is sent.
+	al.rememberTurnAccounting(ts.sessionKey, ts.accountingFor(contextUsage))
 	if !ts.opts.NoHistory {
 		finalMsg := providers.Message{
 			Role:             "assistant",
@@ -92,7 +96,8 @@ func (p *Pipeline) Finalize(
 			modelName: exec.llmModelName,
 		})
 		msg.ContextUsage = contextUsage
-		markFinalOutbound(&msg)
+		markFinalOutbound(ts, &msg)
+		al.takeTurnAccounting(ts.sessionKey)
 		_ = al.bus.PublishOutbound(turnCtx, msg)
 	}
 	if streamErr != nil && isConfiguredStreamingVisibleError(streamErr) {

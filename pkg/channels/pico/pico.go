@@ -347,6 +347,13 @@ func (c *PicoChannel) Send(ctx context.Context, msg bus.OutboundMessage) ([]stri
 		}
 	}
 	setContextUsagePayload(payload, msg.ContextUsage)
+	// The final answer's frame carries the turn's numbers, so the panel draws the
+	// statistics without waiting for a reload. Interim frames never have these set.
+	if msg.Usage != nil {
+		setTurnUsagePayload(payload, msg.Usage.PromptTokens, msg.Usage.CompletionTokens)
+	}
+	setFileChangesPayload(payload, msg.FileChanges)
+	setTurnStatsPayload(payload, msg.Stats)
 	outMsg := newMessage(TypeMessageCreate, payload)
 
 	if err := c.broadcastToSession(msg.ChatID, outMsg); err != nil {
@@ -665,7 +672,7 @@ func (s *picoStreamer) updateLocked(
 		}
 	}
 
-	return s.sendLocked(ctx, content, contextUsage)
+	return s.sendLocked(ctx, content, contextUsage, force)
 }
 
 func (s *picoStreamer) updateReasoningLocked(ctx context.Context, content string, force bool) error {
@@ -698,7 +705,12 @@ func (s *picoStreamer) attachTurnResultPayload(payload map[string]any) {
 	setTurnStatsPayload(payload, s.turnStats)
 }
 
-func (s *picoStreamer) sendLocked(ctx context.Context, content string, contextUsage *bus.ContextUsage) error {
+func (s *picoStreamer) sendLocked(
+	ctx context.Context,
+	content string,
+	contextUsage *bus.ContextUsage,
+	force bool,
+) error {
 	now := time.Now()
 	contentLen := len([]rune(content))
 
@@ -717,7 +729,7 @@ func (s *picoStreamer) sendLocked(ctx context.Context, content string, contextUs
 		if err := s.channel.broadcast(s.chatID, outMsg); err != nil {
 			return err
 		}
-	} else if content != s.lastContent || contextUsage != nil {
+	} else if force || content != s.lastContent || contextUsage != nil {
 		payload := map[string]any{
 			PayloadKeyContent: content,
 			"message_id":      s.messageID,

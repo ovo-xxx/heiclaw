@@ -81,7 +81,14 @@ func (al *AgentLoop) PublishResponseIfNeeded(ctx context.Context, channel, chatI
 	if sessionKey != "" {
 		msg.ContextUsage = computeContextUsage(al.agentForSession(sessionKey), sessionKey)
 	}
-	markFinalOutbound(&msg)
+	// The turn's numbers were parked under this session by the pipeline; this publish
+	// path never sees the turn state itself.
+	if accounting := al.takeTurnAccounting(sessionKey); !accounting.isEmpty() {
+		msg.Usage = accounting.usage
+		msg.FileChanges = accounting.fileChanges
+		msg.Stats = accounting.stats
+	}
+	markFinalOutbound(nil, &msg)
 	al.bus.PublishOutbound(ctx, msg)
 	logger.InfoCF("agent", "Published outbound response",
 		map[string]any{

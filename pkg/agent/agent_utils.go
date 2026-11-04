@@ -87,7 +87,12 @@ func outboundMessageForTurn(ts *turnState, content string) bus.OutboundMessage {
 	}
 }
 
-func markFinalOutbound(msg *bus.OutboundMessage) {
+// markFinalOutbound flags the message as the turn's answer and carries its
+// accounting with it: tokens, changed files and the performance record. Without
+// that the numbers only exist in the saved session, so a panel had to reload the
+// conversation to show them. A caller without a turn state (a response published
+// from outside a turn) still gets the final flag.
+func markFinalOutbound(ts *turnState, msg *bus.OutboundMessage) {
 	if msg == nil {
 		return
 	}
@@ -95,6 +100,12 @@ func markFinalOutbound(msg *bus.OutboundMessage) {
 		msg.Context.Raw = make(map[string]string, 1)
 	}
 	msg.Context.Raw[metadataKeyOutboundKind] = outboundKindFinal
+	if ts == nil {
+		return
+	}
+	msg.Usage = ts.GetTurnUsage()
+	msg.FileChanges = ts.GetFileChanges()
+	msg.Stats = ts.GetTurnStats(msg.ContextUsage)
 }
 
 type outboundTurnMessageOptions struct {

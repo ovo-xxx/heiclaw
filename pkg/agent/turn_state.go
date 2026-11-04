@@ -1041,6 +1041,20 @@ func (ts *turnState) RecordStreamChunkTiming(firstChunkAt time.Time) {
 // and the REST transcript all describe the same numbers (including duration)
 // instead of three snapshots taken at different moments. Pass the context usage
 // snapshot to attach; later calls reuse the cached value.
+// accountingFor snapshots what the finished turn reports to the channel: tokens,
+// changed files and the performance record, all built from the same cached state the
+// session record uses.
+func (ts *turnState) accountingFor(contextUsage *bus.ContextUsage) turnAccounting {
+	if ts == nil {
+		return turnAccounting{}
+	}
+	return turnAccounting{
+		usage:       ts.GetTurnUsage(),
+		fileChanges: ts.GetFileChanges(),
+		stats:       ts.GetTurnStats(contextUsage),
+	}
+}
+
 func (ts *turnState) GetTurnStats(contextUsage *bus.ContextUsage) *providers.TurnStats {
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
