@@ -181,8 +181,11 @@
       "writeFile": "Write file",
       "editFile": "Edit file",
       "search": "Search",
-      "web": "Web lookup"
-    }
+      "web": "Web lookup",
+      "toolCount": "Ran {{count}} tools",
+      "thoughtCount": "{{count}} reasoning steps"
+    },
+    "diffEmpty": "No diff text was returned for this change."
   },
   "header": {
     "logout": {

@@ -7,7 +7,6 @@ import {
   type AssistantDetailVisibility,
   DEFAULT_ASSISTANT_DETAIL_VISIBILITY,
   assistantDetailVisibilityStorage,
-  shouldShowAssistantMessage,
 } from "@/features/chat/detail-visibility"
 import {
   getInitialActiveSessionId,
@@ -147,5 +146,5 @@ export function updateChatStore(
   })
 }
 
-export { shouldShowAssistantMessage, DEFAULT_ASSISTANT_DETAIL_VISIBILITY }
+export { DEFAULT_ASSISTANT_DETAIL_VISIBILITY }
 export type { AssistantDetailVisibility }

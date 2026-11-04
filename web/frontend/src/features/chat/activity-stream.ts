@@ -11,9 +11,9 @@ import type { ChatMessage, ChatToolCall } from "@/store/chat"
 // and the answer that closes the turn stays its own bubble.
 
 export type RenderItem =
-  | { type: "user"; message: ChatMessage }
-  | { type: "activity"; key: string; messages: ChatMessage[] }
-  | { type: "assistant"; message: ChatMessage }
+  | { type: "user"; index: number; message: ChatMessage }
+  | { type: "activity"; index: number; key: string; messages: ChatMessage[] }
+  | { type: "assistant"; index: number; message: ChatMessage }
 
 export function buildRenderItems(
   messages: ChatMessage[],
@@ -21,34 +21,44 @@ export function buildRenderItems(
 ): RenderItem[] {
   const items: RenderItem[] = []
   let activity: ChatMessage[] | undefined
+  let activityIndex = 0
 
   const flush = () => {
     if (activity && activity.length > 0) {
       // The first block's id is stable while later blocks stream in, so expanding a
       // row does not lose its state mid-turn.
-      items.push({ type: "activity", key: activity[0].id, messages: activity })
+      items.push({
+        type: "activity",
+        key: activity[0].id,
+        index: activityIndex,
+        messages: activity,
+      })
     }
     activity = undefined
   }
 
-  for (const message of messages) {
+  messages.forEach((message, index) => {
     if (message.role !== "assistant") {
       flush()
-      items.push({ type: "user", message })
-      continue
+      items.push({ type: "user", index, message })
+      return
     }
 
     const kind = message.kind ?? "normal"
     if (kind === "thought" || kind === "tool_calls") {
       if (shouldShowAssistantMessage(visibility, kind)) {
-        ;(activity ??= []).push(message)
+        if (!activity) {
+          activity = []
+          activityIndex = index
+        }
+        activity.push(message)
       }
-      continue
+      return
     }
 
     flush()
-    items.push({ type: "assistant", message })
-  }
+    items.push({ type: "assistant", index, message })
+  })
 
   flush()
   return items
@@ -64,6 +74,8 @@ export interface ActivityRow {
   ok?: boolean
   content?: string
   toolCall?: ChatToolCall
+  // What the model said it was about to do, when it said one.
+  explanation?: string
   timestamp?: string | number
   modelName?: string
 }
@@ -74,13 +86,13 @@ export interface ActivityRow {
 export function buildActivityRows(messages: ChatMessage[]): ActivityRow[] {
   const rows: ActivityRow[] = []
 
-  messages.forEach((message, messageIndex) => {
+  for (const message of messages) {
     const kind = message.kind ?? "normal"
 
     if (kind === "thought") {
       const content = message.content.trim()
       if (!content) {
-        return
+        continue
       }
       rows.push({
         id: `thought-${message.id}`,
@@ -91,11 +103,11 @@ export function buildActivityRows(messages: ChatMessage[]): ActivityRow[] {
         timestamp: message.timestamp,
         modelName: message.modelName,
       })
-      return
+      continue
     }
 
     if (kind !== "tool_calls") {
-      return
+      continue
     }
 
     const stats = message.stats?.tools ?? []
@@ -124,13 +136,13 @@ export function buildActivityRows(messages: ChatMessage[]): ActivityRow[] {
         durationMs: record?.duration_ms,
         ok: record?.ok,
         toolCall,
+        explanation:
+          toolCall.extraContent?.toolFeedbackExplanation?.trim() ?? "",
         timestamp: message.timestamp,
         modelName: message.modelName,
-        // A tool_calls block also carries the model's own note about the call.
-        content: messageIndex >= 0 ? undefined : undefined,
       })
     })
-  })
+  }
 
   return rows
 }
