@@ -819,9 +819,11 @@ func (h *Handler) handleUpdateModel(w http.ResponseWriter, r *http.Request) {
 	}
 	oldModelName := strings.TrimSpace(cfg.ModelList[idx].ModelName)
 
-	// Preserve the existing API key when the caller omits it (empty string).
-	// This lets the UI update api_base / proxy without clearing the stored secret.
-	if mc.APIKey == "" {
+	// Preserve the existing API key when the caller omits it (empty string) or echoes
+	// back the mask GET /api/models showed it. The second case is not hypothetical: a
+	// client that round-trips the list it just read would otherwise persist
+	// "sk-****abcd" as the key, which only surfaces as a 401 after the next restart.
+	if mc.APIKey == "" || isMaskedAPIKey(mc.APIKey) {
 		mc.ModelConfig.SetAPIKey(cfg.ModelList[idx].APIKey())
 	} else {
 		mc.ModelConfig.SetAPIKey(mc.APIKey)
@@ -1147,6 +1149,12 @@ func (h *Handler) handleUpdateDefaultChain(w http.ResponseWriter, r *http.Reques
 		DefaultModel:  defaultModel,
 		FallbackChain: fallbacks,
 	})
+}
+
+// isMaskedAPIKey reports a value produced by maskAPIKey rather than typed by a user.
+// Write paths treat it as "unchanged", because a real key never contains "****".
+func isMaskedAPIKey(key string) bool {
+	return strings.Contains(strings.TrimSpace(key), "****")
 }
 
 // maskAPIKey returns a masked version of an API key for safe display.

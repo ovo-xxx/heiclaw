@@ -4101,3 +4101,67 @@ func TestHandleFetchModels_ModelIndexProviderMismatchRejectsKey(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	mux.ServeHTTP(rec, req)
 }
+
+// A client that round-trips what GET /api/models returned would send the masked key
+// back. Writing it would destroy the secret and only show up as a 401 after the next
+// gateway restart, so a masked value means "unchanged".
+func TestHandleUpdateModel_DoesNotPersistMaskedAPIKey(t *testing.T) {
+	configPath, cleanup := setupOAuthTestEnv(t)
+	defer cleanup()
+
+	const realKey = "sk-original-key-1234567890"
+	cfg, err := config.LoadConfig(configPath)
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+	cfg.ModelList = []*config.ModelConfig{{
+		ModelName: "editable",
+		Model:     "openai/gpt-4o-mini",
+		APIKeys:   config.SimpleSecureStrings(realKey),
+	}}
+	if err = config.SaveConfig(configPath, cfg); err != nil {
+		t.Fatalf("SaveConfig() error = %v", err)
+	}
+
+	h := NewHandler(configPath)
+	mux := http.NewServeMux()
+	h.RegisterRoutes(mux)
+
+	masked := maskAPIKey(realKey)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPut, "/api/models/0", bytes.NewBufferString(`{
+		"model_name":"editable",
+		"model":"openai/gpt-4o-mini",
+		"api_key":"`+masked+`"
+	}`))
+	req.Header.Set("Content-Type", "application/json")
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d, body=%s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	after, err := config.LoadConfig(configPath)
+	if err != nil {
+		t.Fatalf("LoadConfig() after masked update error = %v", err)
+	}
+	if got := after.ModelList[0].APIKey(); got != realKey {
+		t.Fatalf("stored key = %q, want the original untouched", got)
+	}
+
+	// A real replacement still lands.
+	recReal := httptest.NewRecorder()
+	reqReal := httptest.NewRequest(http.MethodPut, "/api/models/0", bytes.NewBufferString(`{
+		"model_name":"editable",
+		"model":"openai/gpt-4o-mini",
+		"api_key":"sk-brand-new-key-abcdefgh"
+	}`))
+	reqReal.Header.Set("Content-Type", "application/json")
+	mux.ServeHTTP(recReal, reqReal)
+	final, err := config.LoadConfig(configPath)
+	if err != nil {
+		t.Fatalf("LoadConfig() after real update error = %v", err)
+	}
+	if got := final.ModelList[0].APIKey(); got != "sk-brand-new-key-abcdefgh" {
+		t.Fatalf("stored key = %q, want the replacement", got)
+	}
+}
