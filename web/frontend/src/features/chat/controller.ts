@@ -265,7 +265,7 @@ export async function hydrateActiveSession() {
   }
 
   hydratePromise = loadSessionMessages(storedSessionId)
-    .then(({ messages: historyMessages, model }) => {
+    .then(({ messages: historyMessages, model, contextUsage }) => {
       const currentState = getChatState()
       if (currentState.activeSessionId !== storedSessionId) {
         return
@@ -287,6 +287,7 @@ export async function hydrateActiveSession() {
         messages: historyMessages,
         isTyping: false,
         hasHydratedActiveSession: true,
+        contextUsage,
         sessionModelPin: model,
       })
     })
@@ -392,8 +393,11 @@ export async function switchChatSession(sessionId: string) {
   }
 
   try {
-    const { messages: historyMessages, model } =
-      await loadSessionMessages(sessionId)
+    const {
+      messages: historyMessages,
+      model,
+      contextUsage,
+    } = await loadSessionMessages(sessionId)
 
     disconnectChatInternal({ clearDesiredConnection: false })
     setActiveSessionId(sessionId)
@@ -401,7 +405,9 @@ export async function switchChatSession(sessionId: string) {
       messages: historyMessages,
       isTyping: false,
       hasHydratedActiveSession: true,
-      contextUsage: undefined,
+      // Opening a stored session already knows how full its context is, so the
+      // composer does not have to wait for the next turn to show the fill.
+      contextUsage,
       sessionModelPin: model,
     })
 

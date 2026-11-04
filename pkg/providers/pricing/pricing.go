@@ -24,7 +24,12 @@ type Table struct {
 	Currency string
 	OffPeak  Rate
 	Peak     Rate
+	// Source is where the row was read from and when, shown in the panel so a
+	// stale table is visible without opening the code.
+	Source string
 }
+
+const deepSeekSource = "https://api-docs.deepseek.com/zh-cn/quick_start/pricing · 2026-11-04 取用"
 
 // tables is the DeepSeek row set as published on
 // https://api-docs.deepseek.com/zh-cn/quick_start/pricing, read 2026-11-04.
@@ -37,12 +42,14 @@ var tables = map[string]Table{
 		Currency: "CNY",
 		OffPeak:  Rate{InputPerMTok: 1, CacheReadPerMTok: 0.02, OutputPerMTok: 4},
 		Peak:     Rate{InputPerMTok: 2, CacheReadPerMTok: 0.04, OutputPerMTok: 8},
+		Source:   deepSeekSource,
 	},
 	"deepseek-v4-pro": {
 		Name:     "deepseek-v4-pro",
 		Currency: "CNY",
 		OffPeak:  Rate{InputPerMTok: 4.5, CacheReadPerMTok: 0.15, OutputPerMTok: 13.5},
 		Peak:     Rate{InputPerMTok: 9, CacheReadPerMTok: 0.3, OutputPerMTok: 27},
+		Source:   deepSeekSource,
 	},
 }
 
@@ -143,13 +150,17 @@ func ForCall(model string, at time.Time, usage providers.TurnTokens) *providers.
 	cacheRead := float64(usage.CacheReadTokens) / perMillion * rate.CacheReadPerMTok
 	output := float64(usage.OutputTokens) / perMillion * rate.OutputPerMTok
 	return &providers.CallCost{
-		Currency:  table.Currency,
-		Amount:    input + cacheRead + output,
-		Input:     input,
-		CacheRead: cacheRead,
-		Output:    output,
-		Peak:      peak,
-		Table:     table.Name,
+		Currency:      table.Currency,
+		Amount:        input + cacheRead + output,
+		Input:         input,
+		CacheRead:     cacheRead,
+		Output:        output,
+		InputRate:     rate.InputPerMTok,
+		CacheReadRate: rate.CacheReadPerMTok,
+		OutputRate:    rate.OutputPerMTok,
+		Peak:          peak,
+		Table:         table.Name,
+		Source:        table.Source,
 	}
 }
 

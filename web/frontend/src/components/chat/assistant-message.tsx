@@ -15,13 +15,14 @@ import rehypeRaw from "rehype-raw"
 import rehypeSanitize from "rehype-sanitize"
 import remarkGfm from "remark-gfm"
 
-import type { TurnStats } from "@/api/sessions"
+import type { TurnStats, TurnToolStat } from "@/api/sessions"
 import {
   MarkdownCodeBlock,
   MessageCodeBlock,
 } from "@/components/chat/message-code-block"
 import { TurnStatsSummary } from "@/components/chat/turn-stats-summary"
 import { Button } from "@/components/ui/button"
+import { toolActivity } from "@/features/chat/tool-labels"
 import {
   formatToolDuration,
   summarizeToolArguments,
@@ -96,27 +97,25 @@ export function AssistantMessage({
     : t("chat.copyMessage")
   const trimmedModelName = modelName?.trim() ?? ""
 
-  // Per-call durations arrive keyed by the provider's tool-call id.
+  // Per-call duration and outcome arrive keyed by the provider's tool-call id.
   const toolStats = stats?.tools ?? []
   const toolStatByCallId = new Map(
     toolStats
       .filter((tool) => tool.call_id)
       .map((tool) => [tool.call_id, tool]),
   )
-  function durationOf(
+  function statOf(
     callId: string | undefined,
     name: string,
     index: number,
-  ): number | undefined {
+  ): TurnToolStat | undefined {
     const byId = callId ? toolStatByCallId.get(callId) : undefined
     if (byId) {
-      return byId.duration_ms
+      return byId
     }
     // Older records only list tools in call order, with no ids to match on.
     const unclaimed = toolStats.filter((tool) => !tool.call_id)
-    return unclaimed[index]?.name === name
-      ? unclaimed[index]?.duration_ms
-      : undefined
+    return unclaimed[index]?.name === name ? unclaimed[index] : undefined
   }
 
   return (
@@ -193,26 +192,36 @@ export function AssistantMessage({
                 const summary = summarizeToolArguments(
                   toolCall.function?.arguments,
                 )
-                const durationMs = durationOf(toolCall.id, name, index)
+                const record = statOf(toolCall.id, name, index)
+                const activity = toolActivity(name)
                 if (!name && !summary) {
                   return null
                 }
+                const Icon = activity.icon
                 return (
                   <div
                     key={toolCall.id ?? `${name}-${index}`}
-                    className="flex min-w-0 items-baseline gap-2 font-mono text-[12px]"
+                    className="flex min-w-0 items-baseline gap-2 text-[12px]"
                   >
+                    <Icon
+                      className={cn(
+                        "size-3.5 shrink-0 self-center opacity-60",
+                        record && !record.ok && "text-red-500/80",
+                      )}
+                    />
                     <span className="text-foreground/80 shrink-0">
-                      {name || t("chat.toolCallFunctionLabel")}
+                      {activity.labelKey
+                        ? t(activity.labelKey)
+                        : activity.fallbackLabel}
                     </span>
                     {summary && (
-                      <span className="text-muted-foreground/70 min-w-0 truncate">
+                      <span className="text-muted-foreground/70 min-w-0 truncate font-mono">
                         {summary}
                       </span>
                     )}
-                    {durationMs !== undefined && (
+                    {record?.duration_ms !== undefined && (
                       <span className="text-muted-foreground/50 ml-auto shrink-0 tabular-nums">
-                        {formatToolDuration(durationMs)}
+                        {formatToolDuration(record.duration_ms)}
                       </span>
                     )}
                   </div>

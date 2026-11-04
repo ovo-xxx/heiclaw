@@ -2,7 +2,16 @@ import type { ReactNode } from "react"
 import { useTranslation } from "react-i18next"
 
 import type { TurnLLMCallStat, TurnStats } from "@/api/sessions"
+import {
+  CostBreakdown,
+  TurnCostBreakdown,
+} from "@/components/chat/cost-breakdown"
 import { TurnStatsRing } from "@/components/chat/turn-stats-ring"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import {
   callOutputRate,
   formatCost,
@@ -11,7 +20,6 @@ import {
   formatTokenExact,
   formatTokenRate,
   turnCostText,
-  turnCostTitle,
   turnOutputRate,
 } from "@/features/chat/turn-stats"
 import { cn } from "@/lib/utils"
@@ -34,14 +42,16 @@ function StatCell({
   value,
   className,
   title,
+  hint,
 }: {
   label: string
   value: string
   className?: string
   title?: string
+  hint?: ReactNode
 }) {
-  return (
-    <div className="flex min-w-0 items-baseline justify-between gap-1.5">
+  const cell = (
+    <div className="flex min-w-0 cursor-help items-baseline justify-between gap-1.5">
       <span className="text-muted-foreground/55 min-w-0 truncate text-[10px]">
         {label}
       </span>
@@ -50,11 +60,24 @@ function StatCell({
           "text-muted-foreground/85 shrink-0 text-[11px] tabular-nums",
           className,
         )}
-        title={title}
+        title={hint ? undefined : title}
       >
         {value}
       </span>
     </div>
+  )
+
+  if (!hint) {
+    return cell
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{cell}</TooltipTrigger>
+      <TooltipContent side="top" className="max-w-[340px] text-[11px]">
+        {hint}
+      </TooltipContent>
+    </Tooltip>
   )
 }
 
@@ -105,7 +128,7 @@ function LLMCallRow({
     call.cost !== undefined
 
   return (
-    <div className="border-border/25 bg-background/45 dark:bg-background/20 rounded-lg border px-2 py-1.5">
+    <div className="border-border/25 bg-background/45 dark:bg-background/20 rounded-lg border px-2 py-1">
       <div className="flex min-w-0 items-baseline gap-1.5">
         <span className="text-muted-foreground/50 shrink-0 font-mono text-[10px]">
           #{call.index || position}
@@ -125,7 +148,7 @@ function LLMCallRow({
         )}
       </div>
 
-      <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 sm:grid-cols-3">
+      <div className="mt-0.5 grid grid-cols-2 gap-x-3 gap-y-0 sm:grid-cols-4">
         <TokenCell
           label={t("chat.turnStats.input")}
           value={call.tokens.input_tokens}
@@ -177,22 +200,14 @@ function LLMCallRow({
           <StatCell
             label={t("chat.turnStats.cost")}
             value={formatCost(call.cost.currency, call.cost.amount)}
-            title={[
-              `${call.cost.currency} ${call.cost.amount.toFixed(6)}`,
-              `${t("chat.turnStats.input")} ${call.cost.input.toFixed(6)}`,
-              `${t("chat.turnStats.cacheRead")} ${call.cost.cache_read.toFixed(6)}`,
-              `${t("chat.turnStats.output")} ${call.cost.output.toFixed(6)}`,
-              call.cost.table ?? "",
-            ]
-              .filter(Boolean)
-              .join(" · ")}
+            hint={<CostBreakdown cost={call.cost} tokens={call.tokens} />}
             className="text-foreground/80"
           />
         )}
       </div>
 
       {hasBadges && (
-        <div className="mt-1 flex flex-wrap gap-1">
+        <div className="mt-0.5 flex flex-wrap gap-1">
           {call.cost && (
             <BadgePill>
               {t(
@@ -229,12 +244,11 @@ export function TurnStatsDetail({ stats, modelName }: TurnStatsDetailProps) {
   const tokens = stats.tokens
   const turnRate = turnOutputRate(stats)
   const cost = turnCostText(stats)
-  const costTitle = turnCostTitle(stats)
   const droppedCalls = stats.dropped_llm_call_count ?? 0
   const droppedTools = stats.dropped_tool_count ?? 0
 
   return (
-    <div className="border-border/30 bg-muted/20 dark:bg-muted/10 flex flex-col gap-2.5 rounded-xl border px-2.5 py-2">
+    <div className="border-border/30 bg-muted/20 dark:bg-muted/10 flex flex-col gap-1.5 rounded-xl border px-2.5 py-1.5">
       {modelName && (
         <div className="flex min-w-0 items-baseline justify-between gap-2">
           <SectionTitle>{t("chat.turnStats.modelTitle")}</SectionTitle>
@@ -244,7 +258,7 @@ export function TurnStatsDetail({ stats, modelName }: TurnStatsDetailProps) {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-x-3 gap-y-0 sm:grid-cols-4">
         {stats.duration_ms !== undefined && (
           <StatCell
             label={t("chat.turnStats.duration")}
@@ -289,7 +303,7 @@ export function TurnStatsDetail({ stats, modelName }: TurnStatsDetailProps) {
 
       <div>
         <SectionTitle>{t("chat.turnStats.tokensTitle")}</SectionTitle>
-        <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 sm:grid-cols-3">
+        <div className="mt-0.5 grid grid-cols-2 gap-x-3 gap-y-0 sm:grid-cols-4">
           <TokenCell
             label={t("chat.turnStats.input")}
             value={tokens.input_tokens}
@@ -320,11 +334,11 @@ export function TurnStatsDetail({ stats, modelName }: TurnStatsDetailProps) {
               value={tokens.reasoning_tokens}
             />
           )}
-          {cost && (
+          {cost && stats.cost && (
             <StatCell
               label={t("chat.turnStats.cost")}
               value={cost}
-              title={costTitle}
+              hint={<TurnCostBreakdown cost={stats.cost} calls={calls} />}
               className="text-foreground/80"
             />
           )}
@@ -332,7 +346,7 @@ export function TurnStatsDetail({ stats, modelName }: TurnStatsDetailProps) {
       </div>
 
       {calls.length > 0 && (
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-1">
           <SectionTitle>
             {t("chat.turnStats.callsTitle")}
             <span className="text-muted-foreground/45">{calls.length}</span>
@@ -412,7 +426,7 @@ export function TurnStatsDetail({ stats, modelName }: TurnStatsDetailProps) {
               {context.used_percent}%
             </span>
           </div>
-          <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 sm:grid-cols-3">
+          <div className="mt-0.5 grid grid-cols-2 gap-x-3 gap-y-0 sm:grid-cols-4">
             <StatCell
               label={t("chat.turnStats.contextUsed")}
               value={`${formatTokenCount(context.used_tokens)} / ${formatTokenCount(context.total_tokens)}`}

@@ -101,7 +101,9 @@
       "outputRate": "Output speed",
       "outputRateHint": "Output tokens over the window the model was generating; first-token wait and tool time stay out",
       "peakBand": "Peak hours",
-      "offPeakBand": "Off-peak"
+      "offPeakBand": "Off-peak",
+      "bandRule": "Peak hours: 09:00-12:00 and 14:00-18:00 Beijing time on weekdays; weekends and statutory holidays bill off-peak.",
+      "uncountedCalls": "{{count}} further calls were not priced"
     },
     "changedFilesLabel": "Changed files",
     "toolCallExplanationLabel": "Call note",
@@ -172,6 +174,14 @@
       "apikey": "API Key",
       "oauth": "OAuth",
       "local": "Local"
+    },
+    "activity": {
+      "exec": "Terminal command",
+      "readFile": "Read file",
+      "writeFile": "Write file",
+      "editFile": "Edit file",
+      "search": "Search",
+      "web": "Web lookup"
     }
   },
   "header": {

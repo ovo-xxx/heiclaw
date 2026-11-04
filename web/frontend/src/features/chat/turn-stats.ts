@@ -149,7 +149,11 @@ function parseCallCost(raw: unknown): TurnCallCost | undefined {
     cache_read: toNumber(obj.cache_read),
     output: toNumber(obj.output),
     peak: obj.peak === true,
+    input_rate: toNumber(obj.input_rate),
+    cache_read_rate: toNumber(obj.cache_read_rate),
+    output_rate: toNumber(obj.output_rate),
     table: toText(obj.table),
+    source: toText(obj.source),
   }
 }
 
@@ -350,6 +354,10 @@ const CURRENCY_SIGNS: Record<string, string> = {
   USD: "$",
 }
 
+export function currencySign(currency: string): string {
+  return CURRENCY_SIGNS[currency] ?? `${currency} `
+}
+
 // Money is shown in the currency the price table bills in. A DeepSeek turn costs
 // fractions of a fen, so small amounts keep four decimals instead of collapsing to
 // ￥0.00, which would read as a free turn.
@@ -357,8 +365,13 @@ export function formatCost(currency: string, amount: number): string {
   if (!(amount > 0)) {
     return ""
   }
-  const sign = CURRENCY_SIGNS[currency] ?? `${currency} `
-  return `${sign}${amount.toFixed(amount >= 1 ? 2 : 4)}`
+  return `${currencySign(currency)}${amount.toFixed(amount >= 1 ? 2 : 4)}`
+}
+
+// Amounts inside a calculation breakdown keep every decimal they have, so the sum
+// of the rows visibly equals the total instead of rounding twice.
+export function formatCostExact(currency: string, amount: number): string {
+  return `${currencySign(currency)}${amount.toFixed(6)}`
 }
 
 // Cost of a turn: the computed amount when the price table covered its calls,
@@ -368,20 +381,6 @@ export function turnCostText(stats?: TurnStats): string {
     return formatCost(stats.cost.currency, stats.cost.amount)
   }
   return formatCostUsd(stats?.tokens.cost_usd ?? 0)
-}
-
-// What the priced total left out, so a partial bill never reads as complete.
-export function turnCostTitle(stats?: TurnStats): string | undefined {
-  const cost = stats?.cost
-  if (!cost) {
-    return undefined
-  }
-  const parts = [
-    `${cost.currency} ${cost.amount.toFixed(6)}`,
-    cost.table ?? "",
-    cost.uncounted_calls ? `+${cost.uncounted_calls} 未计价` : "",
-  ]
-  return parts.filter(Boolean).join(" · ")
 }
 
 export function formatDuration(ms: number): string {

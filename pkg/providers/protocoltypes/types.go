@@ -204,9 +204,17 @@ type CallCost struct {
 	CacheRead float64 `json:"cache_read"`
 	Output    float64 `json:"output"`
 	Peak      bool    `json:"peak"`
+
+	// The per-million prices the amount was computed with. Without them the panel
+	// could only show a number and ask the user to trust it.
+	InputRate     float64 `json:"input_rate"`
+	CacheReadRate float64 `json:"cache_read_rate"`
+	OutputRate    float64 `json:"output_rate"`
+
 	// Table names the price row used, so the panel can say which table and how
 	// old it is.
-	Table string `json:"table,omitempty"`
+	Table  string `json:"table,omitempty"`
+	Source string `json:"source,omitempty"`
 }
 
 // TurnCost is the summed call cost of a turn. Calls priced in different currencies

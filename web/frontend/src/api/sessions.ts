@@ -54,7 +54,13 @@ export interface TurnCallCost {
   cache_read: number
   output: number
   peak: boolean
+  // The per-million prices the amount was computed with, so the panel can show the
+  // multiplication rather than asking the user to trust a number.
+  input_rate: number
+  cache_read_rate: number
+  output_rate: number
   table?: string
+  source?: string
 }
 
 export interface TurnCost {

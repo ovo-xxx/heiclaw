@@ -101,7 +101,9 @@
       "outputRate": "输出速度",
       "outputRateHint": "输出 Token ÷ 模型实际生成时长，不含首字等待与工具执行",
       "peakBand": "高峰时段",
-      "offPeakBand": "闲时时段"
+      "offPeakBand": "闲时时段",
+      "bandRule": "高峰时段：北京时间 周一至周五 9:00-12:00、14:00-18:00；周末与法定节假日全天按闲时计价。",
+      "uncountedCalls": "另有 {{count}} 次调用未计价"
     },
     "changedFilesLabel": "改动文件",
     "toolCallExplanationLabel": "调用提示",
@@ -172,6 +174,14 @@
       "apikey": "API Key",
       "oauth": "OAuth",
       "local": "本地模型"
+    },
+    "activity": {
+      "exec": "终端命令",
+      "readFile": "读取文件",
+      "writeFile": "写入文件",
+      "editFile": "编辑文件",
+      "search": "检索",
+      "web": "联网查询"
     }
   },
   "header": {

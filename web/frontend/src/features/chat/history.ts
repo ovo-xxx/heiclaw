@@ -5,7 +5,7 @@ import {
   toolCallsSignature,
 } from "@/features/chat/tool-calls"
 import { parseTurnStats } from "@/features/chat/turn-stats"
-import type { ChatAttachment, ChatMessage } from "@/store/chat"
+import type { ChatAttachment, ChatMessage, ContextUsage } from "@/store/chat"
 
 function toChatAttachments({
   media,
@@ -40,9 +40,11 @@ function toChatAttachments({
   return merged.length > 0 ? merged : undefined
 }
 
-export async function loadSessionMessages(
-  sessionId: string,
-): Promise<{ messages: ChatMessage[]; model: string | null }> {
+export async function loadSessionMessages(sessionId: string): Promise<{
+  messages: ChatMessage[]
+  model: string | null
+  contextUsage: ContextUsage | undefined
+}> {
   const detail = await getSessionHistory(sessionId)
   const messages = detail.messages.map((message, index) => ({
     id: `hist-${index}-${Date.now()}`,
@@ -67,7 +69,22 @@ export async function loadSessionMessages(
     }),
     timestamp: message.created_at ?? detail.updated,
   }))
-  return { messages, model: detail.model?.trim() || null }
+  // The composer shows the context fill next to the send button, and it has to be
+  // right there when a stored session opens - not only after its next turn streams
+  // a fresh snapshot. The last turn's snapshot is what the session actually holds.
+  let contextUsage: ContextUsage | undefined
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    contextUsage = messages[index].stats?.context_usage
+    if (contextUsage) {
+      break
+    }
+  }
+
+  return {
+    messages,
+    model: detail.model?.trim() || null,
+    contextUsage,
+  }
 }
 
 function normalizeMessageTimestamp(timestamp: number | string): string {

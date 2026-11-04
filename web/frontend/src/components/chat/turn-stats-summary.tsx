@@ -1,17 +1,23 @@
 import { IconChevronDown, IconGauge } from "@tabler/icons-react"
+import type { ReactNode } from "react"
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
 
 import type { TurnStats } from "@/api/sessions"
+import { TurnCostBreakdown } from "@/components/chat/cost-breakdown"
 import { TurnStatsDetail } from "@/components/chat/turn-stats-detail"
 import { TurnStatsRing } from "@/components/chat/turn-stats-ring"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import {
   formatDuration,
   formatTokenCount,
   formatTokenExact,
   formatTokenRate,
   turnCostText,
-  turnCostTitle,
   turnDurationMs,
   turnOutputRate,
   turnTotalTokens,
@@ -42,28 +48,54 @@ export function TurnStatsSummary({
   const context = stats?.context_usage
   const exactTokens =
     totalTokens > 0 ? formatTokenExact(totalTokens) : undefined
-  const hover = [exactTokens, turnCostTitle(stats)].filter(Boolean).join(" · ")
 
-  const parts: string[] = []
+  const segments: ReactNode[] = []
+  const push = (node: ReactNode) => {
+    if (segments.length > 0) {
+      segments.push(<span key={`sep-${segments.length}`}> · </span>)
+    }
+    segments.push(node)
+  }
   if (totalTokens > 0) {
-    parts.push(
-      t("chat.turnStats.tokensValue", { count: formatTokenCount(totalTokens) }),
+    push(
+      <span key="tokens" title={exactTokens}>
+        {t("chat.turnStats.tokensValue", {
+          count: formatTokenCount(totalTokens),
+        })}
+      </span>,
     )
   }
   if (durationMs !== undefined) {
-    parts.push(formatDuration(durationMs))
+    push(<span key="duration">{formatDuration(durationMs)}</span>)
   }
   if (outputRate !== undefined) {
-    parts.push(formatTokenRate(outputRate))
+    push(<span key="rate">{formatTokenRate(outputRate)}</span>)
   }
   if (costText) {
-    parts.push(costText)
+    const cost = stats?.cost
+    const amount = (
+      <span key="cost" className="text-foreground/75">
+        {costText}
+      </span>
+    )
+    push(
+      cost ? (
+        <Tooltip key="cost-tip">
+          <TooltipTrigger asChild>
+            <span className="cursor-help">{amount}</span>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-[340px] text-[11px]">
+            <TurnCostBreakdown cost={cost} calls={stats?.llm_calls ?? []} />
+          </TooltipContent>
+        </Tooltip>
+      ) : (
+        amount
+      ),
+    )
   }
-  if (parts.length === 0 && !context) {
+  if (segments.length === 0 && !context) {
     return null
   }
-
-  const summaryLine = parts.join(" · ")
 
   // Sessions recorded before turn_stats existed only have the numbers the
   // message itself carries, so there is nothing to expand.
@@ -71,9 +103,7 @@ export function TurnStatsSummary({
     return (
       <div className="text-muted-foreground/50 mt-1 flex items-center gap-1.5 px-1 text-[11px]">
         <IconGauge className="size-3 shrink-0 opacity-70" />
-        <span className="min-w-0 truncate tabular-nums" title={exactTokens}>
-          {summaryLine}
-        </span>
+        <span className="min-w-0 truncate tabular-nums">{segments}</span>
       </div>
     )
   }
@@ -93,9 +123,7 @@ export function TurnStatsSummary({
         className="text-muted-foreground/55 hover:text-muted-foreground/80 flex w-full items-center gap-1.5 rounded-md px-1 py-0.5 text-left text-[11px] transition-colors"
       >
         <IconGauge className="size-3 shrink-0 opacity-70" />
-        <span className="min-w-0 truncate tabular-nums" title={hover}>
-          {summaryLine}
-        </span>
+        <span className="min-w-0 truncate tabular-nums">{segments}</span>
         <span className="ml-auto flex shrink-0 items-center gap-1.5 pl-1.5">
           {context && (
             <>
