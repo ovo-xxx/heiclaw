@@ -14,7 +14,6 @@ import (
 )
 
 const (
-	defaultBrandName  = "PicoClaw"
 	defaultBrandLogo  = "/logo_with_text.png"
 	brandingLogoRoute = "/api/branding/logo"
 )
@@ -27,27 +26,25 @@ func (h *Handler) registerBrandingRoutes(mux *http.ServeMux) {
 // resolveBranding reads the configured name and logo. The logo path may be relative to
 // the config file, so a deployment can ship the image next to its config; a path that
 // does not point at a file is treated as "not configured" rather than served blindly.
-func (h *Handler) resolveBranding() (name, logoPath string) {
-	name = defaultBrandName
+func (h *Handler) resolveBranding() (config.BrandingConfig, string) {
+	branding := config.BrandingConfig{}
 	cfg, err := config.LoadConfig(h.configPath)
 	if err != nil {
-		return name, ""
+		return branding, ""
 	}
-	if configured := strings.TrimSpace(cfg.Branding.Name); configured != "" {
-		name = configured
-	}
-	logoPath = strings.TrimSpace(cfg.Branding.LogoPath)
+	branding = cfg.Branding
+	logoPath := strings.TrimSpace(branding.LogoPath)
 	if logoPath == "" {
-		return name, ""
+		return branding, ""
 	}
 	if !filepath.IsAbs(logoPath) {
 		logoPath = filepath.Join(filepath.Dir(h.configPath), logoPath)
 	}
 	info, statErr := os.Stat(logoPath)
 	if statErr != nil || info.IsDir() {
-		return name, ""
+		return branding, ""
 	}
-	return name, logoPath
+	return branding, logoPath
 }
 
 // handleGetBranding tells the panel what to call itself. It is public, like the login
@@ -55,7 +52,7 @@ func (h *Handler) resolveBranding() (name, logoPath string) {
 //
 //	GET /api/branding
 func (h *Handler) handleGetBranding(w http.ResponseWriter, r *http.Request) {
-	name, logoPath := h.resolveBranding()
+	branding, logoPath := h.resolveBranding()
 	logoURL := defaultBrandLogo
 	if logoPath != "" {
 		// The mtime busts the cache when a deployment replaces its logo file.
@@ -68,9 +65,10 @@ func (h *Handler) handleGetBranding(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"name":       name,
-		"logo_url":   logoURL,
-		"custom_logo": logoPath != "",
+		"name":           branding.EffectiveName(),
+		"assistant_name": branding.EffectiveAssistantName(),
+		"logo_url":       logoURL,
+		"custom_logo":    logoPath != "",
 	})
 }
 

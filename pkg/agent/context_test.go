@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/sipeed/picoclaw/pkg/providers"
@@ -346,4 +347,31 @@ func TestSanitizeHistoryForProvider_PartialToolResultsInMiddle(t *testing.T) {
 		t.Fatalf("expected 9 messages, got %d: %+v", len(result), roles(result))
 	}
 	assertRoles(t, result, "user", "assistant", "tool", "assistant", "user", "user", "assistant", "tool", "assistant")
+}
+
+// A deployment's assistant name reaches the system prompt; an unconfigured install
+// keeps the original identity line and mascot untouched.
+func TestIdentityUsesConfiguredAssistantName(t *testing.T) {
+	custom := NewContextBuilder(t.TempDir()).WithAssistantName("小A").getIdentity(false)
+	if !strings.Contains(custom, "You are 小A, a helpful AI assistant.") {
+		t.Fatalf("identity missing configured assistant name:\n%s", custom)
+	}
+	if !strings.Contains(custom, "# 小A (") || strings.Contains(custom, "🦞") {
+		t.Fatalf("header = %q, want the assistant name without the default mascot", firstLine(custom))
+	}
+
+	defaulted := NewContextBuilder(t.TempDir()).getIdentity(false)
+	if !strings.Contains(defaulted, "You are picoclaw, a helpful AI assistant.") {
+		t.Fatal("default identity changed")
+	}
+	if !strings.HasPrefix(defaulted, "# picoclaw 🦞 (") {
+		t.Fatalf("default header = %q, want the original mascot line", firstLine(defaulted))
+	}
+}
+
+func firstLine(text string) string {
+	if idx := strings.IndexByte(text, '\n'); idx >= 0 {
+		return text[:idx]
+	}
+	return text
 }

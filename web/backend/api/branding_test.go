@@ -26,14 +26,15 @@ func TestBrandingDefaultsToPicoClaw(t *testing.T) {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}
 	var body struct {
-		Name       string `json:"name"`
-		LogoURL    string `json:"logo_url"`
-		CustomLogo bool   `json:"custom_logo"`
+		Name          string `json:"name"`
+		AssistantName string `json:"assistant_name"`
+		LogoURL       string `json:"logo_url"`
+		CustomLogo    bool   `json:"custom_logo"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if body.Name != "PicoClaw" || body.LogoURL != "/logo_with_text.png" || body.CustomLogo {
+	if body.Name != "PicoClaw" || body.AssistantName != "picoclaw" || body.LogoURL != "/logo_with_text.png" || body.CustomLogo {
 		t.Fatalf("branding = %+v, want the bundled defaults", body)
 	}
 
@@ -70,12 +71,13 @@ func TestBrandingServesConfiguredLogo(t *testing.T) {
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/branding", nil))
 	var body struct {
-		Name       string `json:"name"`
-		LogoURL    string `json:"logo_url"`
-		CustomLogo bool   `json:"custom_logo"`
+		Name          string `json:"name"`
+		AssistantName string `json:"assistant_name"`
+		LogoURL       string `json:"logo_url"`
+		CustomLogo    bool   `json:"custom_logo"`
 	}
 	_ = json.Unmarshal(rec.Body.Bytes(), &body)
-	if body.Name != "Acme" || !body.CustomLogo {
+	if body.Name != "Acme" || body.AssistantName != "Acme" || !body.CustomLogo {
 		t.Fatalf("branding = %+v, want the configured name and logo", body)
 	}
 

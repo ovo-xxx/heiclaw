@@ -973,8 +973,8 @@
     "next": "Próximo",
     "finish": "Concluir",
     "welcome": {
-      "title": "Bem-vindo ao PicoClaw",
-      "description": "PicoClaw é uma plataforma poderosa de assistente de IA. Vamos levar alguns segundos para te ajudar a concluir a configuração básica."
+      "title": "Bem-vindo ao {{name}}",
+      "description": "{{name}} é uma plataforma poderosa de assistente de IA. Vamos levar alguns segundos para te ajudar a concluir a configuração básica."
     },
     "models": {
       "title": "Configurar Modelos",

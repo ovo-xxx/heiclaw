@@ -26,6 +26,7 @@ type ContextBuilder struct {
 	skillsLoader   *skills.SkillsLoader
 	memory         *MemoryStore
 	splitOnMarker  bool
+	assistantName  string
 	agentDiscovery func(agentID string) []AgentDescriptor
 	promptRegistry *PromptRegistry
 
@@ -63,6 +64,12 @@ func (cb *ContextBuilder) WithToolDiscovery(useBM25, useRegex bool) *ContextBuil
 			)
 		}
 	}
+	return cb
+}
+
+// WithAssistantName sets what the assistant calls itself in its system prompt.
+func (cb *ContextBuilder) WithAssistantName(name string) *ContextBuilder {
+	cb.assistantName = strings.TrimSpace(name)
 	return cb
 }
 
@@ -147,6 +154,16 @@ func (cb *ContextBuilder) promptRegistryOrDefault() *PromptRegistry {
 func (cb *ContextBuilder) getIdentity(includeToolUseRule bool) string {
 	workspacePath, _ := filepath.Abs(filepath.Join(cb.workspace))
 	version := config.FormatVersion()
+	// The assistant's own name comes from the deployment's branding; an unconfigured
+	// install keeps the original prompt word for word, mascot included.
+	assistantName := strings.TrimSpace(cb.assistantName)
+	if assistantName == "" {
+		assistantName = config.DefaultAssistantName
+	}
+	header := fmt.Sprintf("# %s (%s)", assistantName, version)
+	if assistantName == config.DefaultAssistantName {
+		header = fmt.Sprintf("# picoclaw 🦞 (%s)", version)
+	}
 	rules := []string{}
 	if includeToolUseRule {
 		rules = append(rules, toolUseSystemPromptRule())
@@ -174,9 +191,9 @@ func (cb *ContextBuilder) getIdentity(includeToolUseRule bool) string {
 	}
 
 	return fmt.Sprintf(
-		`# picoclaw 🦞 (%s)
+		`%s
 
-You are picoclaw, a helpful AI assistant.
+You are %s, a helpful AI assistant.
 
 ## Workspace
 Your workspace is at: %s
@@ -188,7 +205,8 @@ Your workspace is at: %s
 
 %s
 `,
-		version,
+		header,
+		assistantName,
 		workspacePath,
 		workspacePath,
 		workspacePath,

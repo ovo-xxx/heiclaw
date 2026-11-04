@@ -2,11 +2,14 @@ import { useEffect, useState } from "react"
 
 export interface Branding {
   name: string
+  /** What the assistant calls itself: its own name, else the brand, else picoclaw. */
+  assistantName: string
   logoUrl: string
 }
 
 const DEFAULT_BRANDING: Branding = {
   name: "PicoClaw",
+  assistantName: "picoclaw",
   logoUrl: "/logo_with_text.png",
 }
 
@@ -17,10 +20,17 @@ let brandingPromise: Promise<Branding> | null = null
 function loadBranding(): Promise<Branding> {
   brandingPromise ??= fetch("/api/branding")
     .then((res) => (res.ok ? res.json() : null))
-    .then((body: { name?: string; logo_url?: string } | null) => ({
-      name: body?.name?.trim() || DEFAULT_BRANDING.name,
-      logoUrl: body?.logo_url || DEFAULT_BRANDING.logoUrl,
-    }))
+    .then(
+      (body: { name?: string; assistant_name?: string; logo_url?: string } | null) => {
+        const name = body?.name?.trim() || DEFAULT_BRANDING.name
+        return {
+          name,
+          assistantName:
+            body?.assistant_name?.trim() || name || DEFAULT_BRANDING.assistantName,
+          logoUrl: body?.logo_url || DEFAULT_BRANDING.logoUrl,
+        }
+      },
+    )
     .catch(() => DEFAULT_BRANDING)
   return brandingPromise
 }

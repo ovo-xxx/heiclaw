@@ -167,6 +167,7 @@ func NewAgentInstance(
 
 	mcpDiscoveryActive := agentHasDiscoverableMCPServers(cfg, agentMCPServerAllowlist)
 	contextBuilder := NewContextBuilder(workspace).
+		WithAssistantName(cfg.Branding.EffectiveAssistantName()).
 		WithToolDiscovery(
 			mcpDiscoveryActive && cfg.Tools.MCP.Discovery.UseBM25,
 			mcpDiscoveryActive && cfg.Tools.MCP.Discovery.UseRegex,

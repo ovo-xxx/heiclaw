@@ -72,7 +72,7 @@ export function AssistantMessage({
     <div className="group flex w-full flex-col gap-1.5">
       <div className="text-muted-foreground/60 flex items-center justify-between gap-2 px-1 text-xs opacity-70">
         <div className="flex items-center gap-2">
-          <span>{branding.name}</span>
+          <span>{branding.assistantName}</span>
           {trimmedModelName && (
             <>
               <span className="opacity-50">•</span>

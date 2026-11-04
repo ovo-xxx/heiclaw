@@ -6,6 +6,7 @@ import { useAtom } from "jotai"
 import { useTranslation } from "react-i18next"
 
 import { Button } from "@/components/ui/button"
+import { useBranding } from "@/hooks/use-branding"
 import { cn } from "@/lib/utils"
 import {
   type TourStep,
@@ -26,6 +27,7 @@ interface TourStepConfig {
 
 export function TourGuide() {
   const { t } = useTranslation()
+  const branding = useBranding()
   const [tourState] = useAtom(tourAtom)
   const [, setCurrentStep] = useAtom(tourCurrentStepAtom)
   const [, setIsActive] = useAtom(tourIsActiveAtom)
@@ -37,8 +39,8 @@ export function TourGuide() {
 
   const steps: Record<TourStep, TourStepConfig> = {
     welcome: {
-      title: t("tour.welcome.title"),
-      description: t("tour.welcome.description"),
+      title: t("tour.welcome.title", { name: branding.name }),
+      description: t("tour.welcome.description", { name: branding.name }),
       position: "bottom",
     },
     models: {

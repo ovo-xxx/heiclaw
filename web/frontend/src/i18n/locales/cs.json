@@ -971,8 +971,8 @@
     "next": "Další",
     "finish": "Dokončit",
     "welcome": {
-      "title": "Vítejte v PicoClaw",
-      "description": "PicoClaw je výkonná platforma pro AI asistenty. Pojďme si dát chvíli na dokončení základního nastavení."
+      "title": "Vítejte v {{name}}",
+      "description": "{{name}} je výkonná platforma pro AI asistenty. Pojďme si dát chvíli na dokončení základního nastavení."
     },
     "models": {
       "title": "Nakonfigurujte modely",

@@ -248,11 +248,41 @@ type ProcessHookConfig struct {
 // BrandingConfig is a deployment's own name and wordmark. Empty fields keep the
 // bundled defaults, so an unconfigured install looks like PicoClaw.
 type BrandingConfig struct {
-	// Name replaces "PicoClaw" in the tab title, the sidebar and the speaker label.
+	// Name replaces "PicoClaw" in the tab title, the sidebar and the login page.
 	Name string `json:"name,omitempty"`
+	// AssistantName is what the assistant calls itself in its system prompt and in the
+	// speaker label. Empty means the brand Name, then the built-in default.
+	AssistantName string `json:"assistant_name,omitempty"`
 	// LogoPath is an image on disk: absolute, or relative to this config file. The
 	// launcher serves it at /api/branding/logo; empty keeps the bundled wordmark.
 	LogoPath string `json:"logo_path,omitempty"`
+}
+
+const (
+	// DefaultBrandName is the product name an unconfigured install shows.
+	DefaultBrandName = "PicoClaw"
+	// DefaultAssistantName is how the assistant refers to itself by default.
+	DefaultAssistantName = "picoclaw"
+)
+
+// EffectiveName is the product name to display.
+func (b BrandingConfig) EffectiveName() string {
+	if name := strings.TrimSpace(b.Name); name != "" {
+		return name
+	}
+	return DefaultBrandName
+}
+
+// EffectiveAssistantName is what the assistant calls itself: its own name, then the
+// brand name, then the built-in default.
+func (b BrandingConfig) EffectiveAssistantName() string {
+	if name := strings.TrimSpace(b.AssistantName); name != "" {
+		return name
+	}
+	if name := strings.TrimSpace(b.Name); name != "" {
+		return name
+	}
+	return DefaultAssistantName
 }
 
 // BuildInfo contains build-time version information
