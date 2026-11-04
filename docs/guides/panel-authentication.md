@@ -150,16 +150,23 @@ list when the notice is published.
 A deployment can carry its own brand instead of PicoClaw's:
 
 ```json
-"branding": { "name": "Acme", "logo_path": "branding/acme.png" }
+"branding": {
+  "name": "Acme",
+  "assistant_name": "Acme",
+  "logo_path": "branding/acme.svg"
+}
 ```
 
-`logo_path` is absolute or relative to this config file; leaving either field empty keeps
-the bundled default. The launcher serves the image at `/api/branding/logo` and reports
-`{ name, logo_url }` at `/api/branding`, which is public so the login page can draw the
-mark before anyone signs in. `name` becomes the tab title, the sidebar logo's alt text,
-the speaker label above assistant messages, and the login page title area. Replacing the
-file is enough - the URL carries its mtime, so the panel picks the new image up on the
-next load.
+`logo_path` is absolute or relative to this config file and may be any image the browser
+draws, SVG included; leaving either field empty keeps the bundled default. The launcher
+serves the file at `/api/branding/logo` and reports `{ name, assistant_name, logo_url }`
+at `/api/branding`, which is public so the login page can draw the mark before anyone
+signs in. `name` becomes the tab title, the sidebar logo's alt text, and the login page
+title area. `assistant_name` is what the assistant is called above its own messages and
+in its system prompt; when it is empty it falls back to `name`, and only then to
+PicoClaw. The gateway reads branding when it starts, so a change needs a gateway restart
+before the assistant stops introducing itself with the old name. Replacing the image file
+is enough - the URL carries its mtime, so the panel picks the new one up on the next load.
 
 ## See also
 

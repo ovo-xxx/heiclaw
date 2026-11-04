@@ -130,14 +130,20 @@ DeepSeek 的时段，照抄其定价页：
 部署可以换成自己的品牌：
 
 ```json
-"branding": { "name": "Acme", "logo_path": "branding/acme.png" }
+"branding": {
+  "name": "Acme",
+  "assistant_name": "Acme",
+  "logo_path": "branding/acme.svg"
+}
 ```
 
-`logo_path` 可以是绝对路径，也可以相对本配置文件；两项都留空就保持自带的 PicoClaw。启动器在
-`/api/branding/logo` 提供这张图，并在 `/api/branding` 返回 `{ name, logo_url }`；这两个接口
-是公开的（登录页要在登录前就画出标志）。`name` 会用在标签页标题、侧栏 logo 的替代文字、
-助手消息上方的名字，以及登录页的标题区。替换文件即可生效——URL 带文件 mtime，下一次加载
-就能看到新图。
+`logo_path` 可以是绝对路径，也可以相对本配置文件，图片格式浏览器能画就行（SVG 也可以）；
+留空就保持自带的 PicoClaw。启动器在 `/api/branding/logo` 提供这张图，并在 `/api/branding`
+返回 `{ name, assistant_name, logo_url }`；这两个接口是公开的（登录页要在登录前就画出标志）。
+`name` 用在标签页标题、侧栏 logo 的替代文字和登录页标题区。`assistant_name` 是助手自称的名字：
+消息上方的署名和系统提示词里都用它，留空时退回 `name`，再退回 PicoClaw。gateway 只在启动时
+读品牌配置，所以改完要重启 gateway，助手才会换名字。替换图片文件即可生效——URL 带文件 mtime，
+下一次加载就能看到新图。
 
 ## 另见
 
