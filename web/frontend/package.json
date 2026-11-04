@@ -30,6 +30,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "dayjs": "^1.11.20",
+    "diff2html": "^3.4.56",
     "highlight.js": "^11.11.1",
     "i18next": "^26.0.10",
     "i18next-browser-languagedetector": "^8.2.1",

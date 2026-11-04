@@ -10,6 +10,7 @@ import {
 } from "react"
 import { useTranslation } from "react-i18next"
 
+import { ActivityFeed } from "@/components/chat/activity-feed"
 import { AssistantMessage } from "@/components/chat/assistant-message"
 import {
   ChatComposer,
@@ -33,6 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { buildRenderItems } from "@/features/chat/activity-stream"
 import {
   CHAT_IMAGE_ACCEPT,
   buildChatImageAttachments,
@@ -50,7 +52,6 @@ import type { ChatAttachment } from "@/store/chat"
 import {
   assistantDetailVisibilityAtom,
   sessionModelPinAtom,
-  shouldShowAssistantMessage,
 } from "@/store/chat"
 import type { GatewayState } from "@/store/gateway"
 
@@ -376,30 +377,31 @@ export function ChatPage() {
             />
           )}
 
-          {messages.map((msg, index) => {
-            if (
-              !shouldShowAssistantMessage(assistantDetailVisibility, msg.kind)
-            ) {
-              return null
+          {buildRenderItems(messages, assistantDetailVisibility).map((item) => {
+            if (item.type === "activity") {
+              return (
+                <div key={item.key} className="flex w-full">
+                  <ActivityFeed messages={item.messages} />
+                </div>
+              )
             }
 
+            const msg = item.message
             const elapsedMs =
-              msg.role === "assistant" && (msg.usage || msg.stats)
+              item.type === "assistant" && (msg.usage || msg.stats)
                 ? turnElapsedMs(
-                    turnStartMessage(messages, index)?.timestamp,
+                    turnStartMessage(messages, item.index)?.timestamp,
                     msg.timestamp,
                   )
                 : undefined
 
             return (
               <div key={msg.id} className="flex w-full">
-                {msg.role === "assistant" ? (
+                {item.type === "assistant" ? (
                   <AssistantMessage
                     content={msg.content}
                     attachments={msg.attachments}
-                    kind={msg.kind}
                     modelName={msg.modelName}
-                    toolCalls={msg.toolCalls}
                     timestamp={msg.timestamp}
                     usage={msg.usage}
                     elapsedMs={elapsedMs}
