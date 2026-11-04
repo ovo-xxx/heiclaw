@@ -228,7 +228,6 @@ export function TerminalWorkspace({
   const pendingSplitFocusTabId = useRef<string | null>(null)
   const targetTabsetId =
     activePaneId ?? (model ? firstTabsetId(model.root) : undefined)
-  const maximizedTabsetId = model?.maximizedTabsetId
 
   const addTab = useCallback(() => {
     const workspace = workspaceRef.current
@@ -282,19 +281,6 @@ export function TerminalWorkspace({
     [isMobile, setExpanded, targetTabsetId],
   )
 
-  const toggleMaximize = useCallback(() => {
-    const workspace = workspaceRef.current
-    if (!workspace) {
-      return
-    }
-    if (maximizedTabsetId) {
-      workspace.restoreTabset()
-      return
-    }
-    if (targetTabsetId) {
-      workspace.maximizeTabset(targetTabsetId)
-    }
-  }, [maximizedTabsetId, targetTabsetId])
 
   // Closing the last tab empties the model while the dock toggle can still create
   // a shell; without this the two disagree and a live session has no tab.
@@ -391,19 +377,19 @@ export function TerminalWorkspace({
                 type="button"
                 variant="ghost"
                 size="icon-xs"
-                onClick={toggleMaximize}
+                onClick={() => setExpanded((value) => !value)}
                 title={t(
-                  maximizedTabsetId
+                  expanded
                     ? "pages.terminal.restoreHeight"
                     : "pages.terminal.expand",
                 )}
                 aria-label={t(
-                  maximizedTabsetId
+                  expanded
                     ? "pages.terminal.restoreHeight"
                     : "pages.terminal.expand",
                 )}
               >
-                {maximizedTabsetId ? (
+                {expanded ? (
                   <IconArrowsMinimize className="size-3.5" />
                 ) : (
                   <IconArrowsMaximize className="size-3.5" />
@@ -532,11 +518,11 @@ function TerminalTabChip({
       }}
       className={cn(
         "group relative flex h-6 max-w-[190px] min-w-0 shrink-0 items-center gap-1 rounded-md px-1.5 text-xs",
-        selected && focused
-          ? "bg-background text-foreground font-medium"
-          : selected
-            ? "bg-accent text-accent-foreground"
-            : "text-foreground/70 hover:bg-accent/50 hover:text-foreground",
+        // Only the focused shell is marked, and only by the underline drawn below:
+        // a filled background made the active tab read as dimmed next to the others.
+        focused && selected
+          ? "text-foreground"
+          : "text-foreground/65 hover:bg-accent/50 hover:text-foreground",
       )}
       aria-current={focused && selected ? "true" : undefined}
     >
