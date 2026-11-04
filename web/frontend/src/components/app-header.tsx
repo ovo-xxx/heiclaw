@@ -1,31 +1,16 @@
 import {
-  IconBook,
   IconLanguage,
-  IconLoader2,
   IconLogout,
   IconMenu2,
   IconMoon,
-  IconPlayerPlay,
-  IconPower,
   IconRefresh,
   IconSun,
 } from "@tabler/icons-react"
 import { Link } from "@tanstack/react-router"
-import * as React from "react"
 import { useTranslation } from "react-i18next"
 
 import { postLauncherDashboardLogout } from "@/api/launcher-auth"
 import { TopNav } from "@/components/top-nav"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog.tsx"
 import { Button } from "@/components/ui/button.tsx"
 import {
   DropdownMenu,
@@ -50,26 +35,14 @@ export function AppHeader() {
     state: gwState,
     loading: gwLoading,
     canStart,
-    startReason,
     restartRequired,
-    start,
     restart,
-    stop,
-    error: gwError,
   } = useGateway()
 
-  const isRunning = gwState === "running"
-  const isStarting = gwState === "starting"
   const isRestarting = gwState === "restarting"
   const isStopping = gwState === "stopping"
-  const isStopped = gwState === "stopped" || gwState === "unknown"
   const showNotConnectedHint =
-    !isRestarting &&
-    !isStopping &&
-    canStart &&
-    (gwState === "stopped" || gwState === "error")
-
-  const [showStopDialog, setShowStopDialog] = React.useState(false)
+    !isRestarting && !isStopping && canStart && (gwState === "stopped" || gwState === "error")
 
   const handleLogout = async () => {
     const result = await postLauncherDashboardLogout()
@@ -78,25 +51,9 @@ export function AppHeader() {
     globalThis.location.assign(result.logoutUrl || "/launcher-login")
   }
 
-  const handleGatewayToggle = () => {
-    if (gwLoading || isRestarting || isStopping || (!isRunning && !canStart)) {
-      return
-    }
-    if (isRunning) {
-      setShowStopDialog(true)
-    } else {
-      void start()
-    }
-  }
-
   const handleGatewayRestart = () => {
     if (gwLoading || isRestarting || !restartRequired || !canStart) return
     void restart()
-  }
-
-  const confirmStop = () => {
-    setShowStopDialog(false)
-    stop()
   }
 
   return (
@@ -126,28 +83,6 @@ export function AppHeader() {
         )}
       </div>
 
-      <AlertDialog open={showStopDialog} onOpenChange={setShowStopDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t("header.gateway.stopDialog.title")}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("header.gateway.stopDialog.description")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmStop}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {t("header.gateway.stopDialog.confirm")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
       <div className="text-muted-foreground flex items-center gap-1 text-sm font-medium md:gap-2">
         {restartRequired && (
           <Tooltip delayDuration={700}>
@@ -168,101 +103,6 @@ export function AppHeader() {
             </TooltipContent>
           </Tooltip>
         )}
-
-        {/* Gateway Start/Stop */}
-        {isRunning ? (
-          <Tooltip delayDuration={700}>
-            <TooltipTrigger asChild>
-              <Button
-                variant="destructive"
-                size="icon-sm"
-                className="size-8"
-                data-tour="gateway-button"
-                onClick={handleGatewayToggle}
-                disabled={gwLoading}
-                aria-label={t("header.gateway.action.stop")}
-              >
-                <IconPower className="h-4 w-4 opacity-80" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              {gwError ?? t("header.gateway.action.stop")}
-            </TooltipContent>
-          </Tooltip>
-        ) : (
-          <Tooltip
-            delayDuration={gwError || (!canStart && startReason) ? 0 : 700}
-          >
-            <TooltipTrigger asChild>
-              {/* Wrap in span so the tooltip still fires when the button is disabled */}
-              <span
-                className={
-                  !canStart && startReason ? "cursor-not-allowed" : undefined
-                }
-                tabIndex={!canStart && startReason ? 0 : undefined}
-              >
-                <Button
-                  variant={
-                    isStarting || isRestarting || isStopping
-                      ? "secondary"
-                      : "default"
-                  }
-                  size="sm"
-                  data-tour="gateway-button"
-                  className={`h-8 gap-2 px-3 ${
-                    isStopped
-                      ? "bg-green-500 text-white hover:bg-green-600"
-                      : ""
-                  } ${!canStart ? "pointer-events-none" : ""}`}
-                  onClick={handleGatewayToggle}
-                  disabled={
-                    gwLoading ||
-                    isStarting ||
-                    isRestarting ||
-                    isStopping ||
-                    !canStart
-                  }
-                >
-                  {gwLoading || isStarting || isRestarting || isStopping ? (
-                    <IconLoader2 className="h-4 w-4 animate-spin opacity-70" />
-                  ) : (
-                    <IconPlayerPlay className="h-4 w-4 opacity-80" />
-                  )}
-                  <span className="text-xs font-semibold">
-                    {isStopping
-                      ? t("header.gateway.status.stopping")
-                      : isRestarting
-                        ? t("header.gateway.status.restarting")
-                        : isStarting
-                          ? t("header.gateway.status.starting")
-                          : t("header.gateway.action.start")}
-                  </span>
-                </Button>
-              </span>
-            </TooltipTrigger>
-            {gwError || (!canStart && startReason) ? (
-              <TooltipContent>{gwError ?? startReason}</TooltipContent>
-            ) : null}
-          </Tooltip>
-        )}
-
-        <Separator
-          className="mx-4 my-2 hidden md:block"
-          orientation="vertical"
-        />
-
-        {/* Docs Link */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-8"
-          data-tour="docs-button"
-          asChild
-        >
-          <a href="https://docs.picoclaw.io" target="_blank" rel="noreferrer">
-            <IconBook className="size-4.5" />
-          </a>
-        </Button>
 
         {/* Language Switcher */}
         <DropdownMenu>
