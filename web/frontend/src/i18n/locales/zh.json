@@ -85,6 +85,7 @@
       "output": "输出",
       "total": "合计",
       "cacheRead": "缓存命中",
+      "perMillion": "/百万",
       "cacheWrite": "缓存写入",
       "reasoning": "推理",
       "cost": "费用",

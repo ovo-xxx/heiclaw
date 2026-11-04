@@ -85,6 +85,7 @@
       "output": "Output",
       "total": "Total",
       "cacheRead": "Cache read",
+      "perMillion": "/M tokens",
       "cacheWrite": "Cache write",
       "reasoning": "Reasoning",
       "cost": "Cost",

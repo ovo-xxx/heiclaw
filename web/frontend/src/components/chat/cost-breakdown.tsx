@@ -64,7 +64,8 @@ export function CostBreakdown({
             <span className="opacity-70">{row.label}</span>
             <span className="tabular-nums">
               {Math.round(row.count).toLocaleString()} ×{" "}
-              {formatCostExact(cost.currency, row.rate)}/百万 ={" "}
+              {formatCostExact(cost.currency, row.rate)}
+              {t("chat.turnStats.perMillion")} ={" "}
               {formatCostExact(cost.currency, row.amount)}
             </span>
           </div>
