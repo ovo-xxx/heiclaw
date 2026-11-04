@@ -33,7 +33,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { buildRenderItems } from "@/features/chat/activity-stream"
+import {
+  buildRenderItems,
+  toolStatsForTurn,
+} from "@/features/chat/activity-stream"
 import {
   CHAT_IMAGE_ACCEPT,
   buildChatImageAttachments,
@@ -397,7 +400,10 @@ export function ChatPage() {
             if (item.type === "activity") {
               return (
                 <div key={item.key} className="flex w-full">
-                  <ActivityFeed messages={item.messages} />
+                  <ActivityFeed
+                    messages={item.messages}
+                    toolStats={toolStatsForTurn(messages, item.index)}
+                  />
                 </div>
               )
             }

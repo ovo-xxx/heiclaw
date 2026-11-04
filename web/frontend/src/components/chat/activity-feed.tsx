@@ -2,6 +2,7 @@ import { IconBrain, IconChevronDown, IconTool } from "@tabler/icons-react"
 import { useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 
+import type { TurnToolStat } from "@/api/sessions"
 import { MarkdownBody } from "@/components/chat/markdown-body"
 import { MessageCodeBlock } from "@/components/chat/message-code-block"
 import {
@@ -16,9 +17,19 @@ import type { ChatMessage } from "@/store/chat"
 // Everything one turn did, in one stream: a line per thought or tool call, each
 // opening on its own. The turn used to leave a card per block on the page, so eight
 // actions meant eight headers to scan past.
-export function ActivityFeed({ messages }: { messages: ChatMessage[] }) {
+export function ActivityFeed({
+  messages,
+  toolStats = [],
+}: {
+  messages: ChatMessage[]
+  /** The turn's tool records, taken from its answer message. */
+  toolStats?: TurnToolStat[]
+}) {
   const { t } = useTranslation()
-  const rows = useMemo(() => buildActivityRows(messages), [messages])
+  const rows = useMemo(
+    () => buildActivityRows(messages, toolStats),
+    [messages, toolStats],
+  )
   const [openRows, setOpenRows] = useState<Record<string, boolean>>({})
   const [isCollapsed, setIsCollapsed] = useState(false)
 

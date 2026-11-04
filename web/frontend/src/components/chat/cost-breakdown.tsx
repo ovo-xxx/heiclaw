@@ -78,9 +78,6 @@ export function CostBreakdown({
         </span>
       </div>
 
-      <div className="text-[10px] leading-snug opacity-65">
-        {t("chat.turnStats.bandRule")}
-      </div>
       {cost.source && (
         <div className="text-[10px] leading-snug break-all opacity-55">
           {cost.source}
@@ -153,9 +150,6 @@ export function TurnCostBreakdown({
           {t("chat.turnStats.uncountedCalls", { count: cost.uncounted_calls })}
         </div>
       ) : null}
-      <div className="text-[10px] leading-snug opacity-65">
-        {t("chat.turnStats.bandRule")}
-      </div>
     </div>
   )
 }

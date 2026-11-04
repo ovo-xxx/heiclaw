@@ -64,6 +64,25 @@ export function buildRenderItems(
   return items
 }
 
+// The tool records of the turn that starts at startIndex: the first following message
+// that carries stats, stopping at the next user message so a later turn never lends
+// its numbers to this one.
+export function toolStatsForTurn(
+  messages: ChatMessage[],
+  startIndex: number,
+): TurnToolStat[] {
+  for (let index = startIndex; index < messages.length; index += 1) {
+    const message = messages[index]
+    if (message.role === "user") {
+      return []
+    }
+    if (message.stats?.tools?.length) {
+      return message.stats.tools
+    }
+  }
+  return []
+}
+
 export interface ActivityRow {
   id: string
   kind: "thought" | "tool"
@@ -83,7 +102,10 @@ export interface ActivityRow {
 // A row is one thing the turn did: a stretch of reasoning, or one tool call. Tool
 // calls carry their own duration and outcome, matched to the turn record by the
 // provider's call id.
-export function buildActivityRows(messages: ChatMessage[]): ActivityRow[] {
+export function buildActivityRows(
+  messages: ChatMessage[],
+  toolStats: TurnToolStat[] = [],
+): ActivityRow[] {
   const rows: ActivityRow[] = []
 
   for (const message of messages) {
@@ -110,11 +132,14 @@ export function buildActivityRows(messages: ChatMessage[]): ActivityRow[] {
       continue
     }
 
-    const stats = message.stats?.tools ?? []
+    // Tool records live on the turn's answer, not on this block; the caller passes
+    // them in so a row can show its own duration and outcome.
     const byCallId = new Map(
-      stats.filter((tool) => tool.call_id).map((tool) => [tool.call_id, tool]),
+      toolStats
+        .filter((tool) => tool.call_id)
+        .map((tool) => [tool.call_id, tool]),
     )
-    const unclaimed = stats.filter((tool) => !tool.call_id)
+    const unclaimed = toolStats.filter((tool) => !tool.call_id)
 
     ;(message.toolCalls ?? []).forEach((toolCall, callIndex) => {
       const name = toolCall.function?.name?.trim() ?? ""

@@ -108,7 +108,6 @@
       "outputRateHint": "输出 Token ÷ 模型实际生成时长，不含首字等待与工具执行",
       "peakBand": "高峰时段",
       "offPeakBand": "闲时时段",
-      "bandRule": "高峰时段：北京时间 周一至周五 9:00-12:00、14:00-18:00；周末与法定节假日全天按闲时计价。",
       "uncountedCalls": "另有 {{count}} 次调用未计价"
     },
     "changedFilesLabel": "改动文件",

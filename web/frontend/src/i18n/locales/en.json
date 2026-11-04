@@ -108,7 +108,6 @@
       "outputRateHint": "Output tokens over the window the model was generating; first-token wait and tool time stay out",
       "peakBand": "Peak hours",
       "offPeakBand": "Off-peak",
-      "bandRule": "Peak hours: 09:00-12:00 and 14:00-18:00 Beijing time on weekdays; weekends and statutory holidays bill off-peak.",
       "uncountedCalls": "{{count}} further calls were not priced"
     },
     "changedFilesLabel": "Changed files",
