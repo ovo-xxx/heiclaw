@@ -54,11 +54,16 @@ type modelResponse struct {
 	ThinkingLevel  string `json:"thinking_level,omitempty"`
 	// SupportsThinking says whether the provider behind this entry would honour a
 	// thinking effort at all; the composer only offers the control when it is true.
-	SupportsThinking    bool                        `json:"supports_thinking,omitempty"`
-	ToolSchemaTransform string                      `json:"tool_schema_transform,omitempty"`
-	Streaming           config.ModelStreamingConfig `json:"streaming,omitempty"`
-	ExtraBody           map[string]any              `json:"extra_body,omitempty"`
-	CustomHeaders       map[string]string           `json:"custom_headers,omitempty"`
+	SupportsThinking bool `json:"supports_thinking,omitempty"`
+	// ThinkingDefaultLevel and ThinkingLevels come from the provider's own model
+	// list, so the composer can show the effort the provider applies by itself and
+	// offer only levels it accepts.
+	ThinkingDefaultLevel string                      `json:"thinking_default_level,omitempty"`
+	ThinkingLevels       []string                    `json:"thinking_levels,omitempty"`
+	ToolSchemaTransform  string                      `json:"tool_schema_transform,omitempty"`
+	Streaming            config.ModelStreamingConfig `json:"streaming,omitempty"`
+	ExtraBody            map[string]any              `json:"extra_body,omitempty"`
+	CustomHeaders        map[string]string           `json:"custom_headers,omitempty"`
 	// Meta
 	Enabled             bool   `json:"enabled"`
 	Available           bool   `json:"available"`
@@ -617,35 +622,59 @@ func (h *Handler) handleListModels(w http.ResponseWriter, r *http.Request) {
 	}
 	wg.Wait()
 
+	// Ask each provider's own model list what it says about thinking. Entries whose
+	// endpoint cannot be read keep the judgement made from the provider type, so a
+	// provider that publishes nothing still behaves as before.
+	capabilities := make([]providers.ModelCapability, len(cfg.ModelList))
+	capabilityRead := make([]bool, len(cfg.ModelList))
+	var capabilityWG sync.WaitGroup
+	capabilityWG.Add(len(cfg.ModelList))
+	for i, m := range cfg.ModelList {
+		go func(i int, mc *config.ModelConfig) {
+			defer capabilityWG.Done()
+			capabilities[i], capabilityRead[i] = providers.LookupModelCapability(r.Context(), mc)
+		}(i, m)
+	}
+	capabilityWG.Wait()
+
+	supportsThinking := func(i int, mc *config.ModelConfig) bool {
+		if capabilityRead[i] {
+			return capabilities[i].SupportsThinking
+		}
+		return providers.SupportsThinkingForModel(mc)
+	}
+
 	models := make([]modelResponse, 0, len(cfg.ModelList))
 	for i, m := range cfg.ModelList {
 		provider, modelID := providers.ExtractProtocol(m)
 		models = append(models, modelResponse{
-			Index:               i,
-			ModelName:           m.ModelName,
-			Provider:            provider,
-			Model:               modelID,
-			APIBase:             m.APIBase,
-			APIKey:              maskAPIKey(m.APIKey()),
-			Proxy:               m.Proxy,
-			AuthMethod:          m.AuthMethod,
-			ConnectMode:         m.ConnectMode,
-			Workspace:           m.Workspace,
-			RPM:                 m.RPM,
-			MaxTokensField:      m.MaxTokensField,
-			RequestTimeout:      m.RequestTimeout,
-			ThinkingLevel:       m.ThinkingLevel,
-			SupportsThinking:    providers.SupportsThinkingForModel(m),
-			ToolSchemaTransform: m.ToolSchemaTransform,
-			Streaming:           m.Streaming,
-			ExtraBody:           m.ExtraBody,
-			CustomHeaders:       m.CustomHeaders,
-			Enabled:             m.Enabled,
-			Available:           modelStatuses[i].Available,
-			Status:              modelStatuses[i].Status,
-			IsDefault:           m.ModelName == defaultModel,
-			IsVirtual:           m.IsVirtual(),
-			DefaultModelAllowed: defaultModelAllowedForModelConfig(m, defaultChainProvider(cfg)),
+			Index:                i,
+			ModelName:            m.ModelName,
+			Provider:             provider,
+			Model:                modelID,
+			APIBase:              m.APIBase,
+			APIKey:               maskAPIKey(m.APIKey()),
+			Proxy:                m.Proxy,
+			AuthMethod:           m.AuthMethod,
+			ConnectMode:          m.ConnectMode,
+			Workspace:            m.Workspace,
+			RPM:                  m.RPM,
+			MaxTokensField:       m.MaxTokensField,
+			RequestTimeout:       m.RequestTimeout,
+			ThinkingLevel:        m.ThinkingLevel,
+			SupportsThinking:     supportsThinking(i, m),
+			ThinkingDefaultLevel: capabilities[i].DefaultLevel,
+			ThinkingLevels:       capabilities[i].Levels,
+			ToolSchemaTransform:  m.ToolSchemaTransform,
+			Streaming:            m.Streaming,
+			ExtraBody:            m.ExtraBody,
+			CustomHeaders:        m.CustomHeaders,
+			Enabled:              m.Enabled,
+			Available:            modelStatuses[i].Available,
+			Status:               modelStatuses[i].Status,
+			IsDefault:            m.ModelName == defaultModel,
+			IsVirtual:            m.IsVirtual(),
+			DefaultModelAllowed:  defaultModelAllowedForModelConfig(m, defaultChainProvider(cfg)),
 		})
 	}
 

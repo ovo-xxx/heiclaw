@@ -22,6 +22,10 @@ export interface ModelInfo {
   // Whether the provider behind this entry would honour a thinking effort. The
   // composer only offers the control when this is true.
   supports_thinking?: boolean
+  // What the provider's own model list reports: the effort it applies when a request
+  // states none, and the ladder it accepts. Absent when the provider publishes none.
+  thinking_default_level?: string
+  thinking_levels?: string[]
   tool_schema_transform?: string
   streaming?: {
     enabled?: boolean

@@ -245,10 +245,13 @@ func (p *Provider) applyDeepSeekThinkingControl(requestBody map[string]any, leve
 	switch level {
 	case "off":
 		requestBody["thinking"] = map[string]any{"type": "disabled"}
-	case "low", "medium", "high":
+	case "low":
+		requestBody["thinking"] = map[string]any{"type": "enabled"}
+		requestBody["reasoning_effort"] = "low"
+	case "medium", "high":
 		requestBody["thinking"] = map[string]any{"type": "enabled"}
 		requestBody["reasoning_effort"] = "high"
-	case "xhigh":
+	case "xhigh", "max":
 		requestBody["thinking"] = map[string]any{"type": "enabled"}
 		requestBody["reasoning_effort"] = "max"
 	case "adaptive":

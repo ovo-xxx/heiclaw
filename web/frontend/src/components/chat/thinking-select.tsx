@@ -8,23 +8,39 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-// The effort levels the runtime understands. "xhigh" and "adaptive" exist in the
-// backend but are left out here: they only mean something on the couple of
-// providers that map them, and offering a choice a model cannot honour is worse
-// than a shorter list.
-export const THINKING_LEVELS = ["off", "low", "medium", "high"] as const
+// The effort levels this runtime knows how to send. The provider's own model list
+// decides which of them a given model accepts; a level it cannot build a request for
+// is left out of the picker instead of being offered as a dead choice.
+export const THINKING_LEVELS = [
+  "off",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+  "adaptive",
+] as const
 
 export type ThinkingLevel = (typeof THINKING_LEVELS)[number]
 
-export function isThinkingLevel(value: string): value is ThinkingLevel {
-  return (THINKING_LEVELS as readonly string[]).includes(value)
+export function isThinkingLevel(
+  value: string | undefined,
+): value is ThinkingLevel {
+  return (
+    value !== undefined &&
+    (THINKING_LEVELS as readonly string[]).includes(value)
+  )
 }
 
 interface ThinkingSelectProps {
-  /** "" means the model entry's own thinking_level still rules. */
+  /** The conversation's own choice; "" means it has not stated one. */
   value: string
-  /** The level the model entry configures, shown as the un-set state. */
+  /** What the model entry configures, if anything. */
   configuredLevel?: string
+  /** What the provider says it applies when a request states nothing. */
+  defaultLevel?: string
+  /** The ladder the provider accepts, already normalised. Empty means unknown. */
+  levels?: string[]
   disabled?: boolean
   onValueChange: (level: string) => void
 }
@@ -32,15 +48,17 @@ interface ThinkingSelectProps {
 export function ThinkingSelect({
   value,
   configuredLevel,
+  defaultLevel,
+  levels,
   disabled = false,
   onValueChange,
 }: ThinkingSelectProps) {
   const { t } = useTranslation()
-  // Always one of the four levels: the conversation's own choice, else the level the
-  // model entry configures, else 关 - the state in which nothing is sent with the
-  // message.
-  const current =
-    value || (isThinkingLevel(configuredLevel ?? "") ? configuredLevel : "off")
+
+  // The shown level is the one that would actually be used: the conversation's own
+  // choice, then the model entry's, then the provider's stated default, then 关 -
+  // the state in which the message states no effort at all.
+  const current = firstKnown(value, configuredLevel, defaultLevel) ?? "off"
 
   return (
     <Select value={current} onValueChange={onValueChange} disabled={disabled}>
@@ -53,7 +71,7 @@ export function ThinkingSelect({
         <SelectValue />
       </SelectTrigger>
       <SelectContent position="popper" align="start">
-        {THINKING_LEVELS.map((level) => (
+        {thinkingOptions(levels).map((level) => (
           <SelectItem key={level} value={level}>
             {t(`chat.thinking.level.${level}`)}
           </SelectItem>
@@ -61,4 +79,33 @@ export function ThinkingSelect({
       </SelectContent>
     </Select>
   )
+}
+
+function firstKnown(
+  ...candidates: (string | undefined)[]
+): ThinkingLevel | undefined {
+  for (const candidate of candidates) {
+    if (isThinkingLevel(candidate)) {
+      return candidate
+    }
+  }
+  return undefined
+}
+
+// Off is always offered - it is how a turn says "do not think". The rest come from the
+// provider; a provider that publishes no ladder keeps the common three, so the control
+// still works where an endpoint simply does not describe its models.
+function thinkingOptions(levels: string[] | undefined): string[] {
+  const wanted = new Set<string>(["off"])
+  for (const level of levels ?? []) {
+    if (isThinkingLevel(level)) {
+      wanted.add(level)
+    }
+  }
+  if (wanted.size === 1) {
+    wanted.add("low")
+    wanted.add("medium")
+    wanted.add("high")
+  }
+  return THINKING_LEVELS.filter((level) => wanted.has(level))
 }

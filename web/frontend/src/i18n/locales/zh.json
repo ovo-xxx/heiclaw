@@ -61,7 +61,10 @@
         "off": "关",
         "low": "低",
         "medium": "中",
-        "high": "高"
+        "high": "高",
+        "max": "最高",
+        "xhigh": "极高",
+        "adaptive": "自适应"
       }
     },
     "reasoningLabel": "思考",
@@ -187,7 +190,8 @@
       "toolCount": "执行工具 {{count}} 次",
       "thoughtCount": "思考 {{count}} 段"
     },
-    "diffEmpty": "这次改动没有返回可显示的差异内容。"
+    "diffEmpty": "这次改动没有返回可显示的差异内容。",
+    "diffBinary": "二进制文件，没有可显示的文本差异。"
   },
   "header": {
     "logout": {

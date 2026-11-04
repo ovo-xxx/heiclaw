@@ -61,7 +61,10 @@
         "off": "Off",
         "low": "Low",
         "medium": "Medium",
-        "high": "High"
+        "high": "High",
+        "max": "Max",
+        "xhigh": "Extra high",
+        "adaptive": "Adaptive"
       }
     },
     "reasoningLabel": "Reasoning",
@@ -187,7 +190,8 @@
       "toolCount": "Ran {{count}} tools",
       "thoughtCount": "{{count}} reasoning steps"
     },
-    "diffEmpty": "No diff text was returned for this change."
+    "diffEmpty": "No diff text was returned for this change.",
+    "diffBinary": "Binary file — no text diff to show."
   },
   "header": {
     "logout": {

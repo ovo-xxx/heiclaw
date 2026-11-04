@@ -34,13 +34,13 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { buildRenderItems } from "@/features/chat/activity-stream"
-import { displayModelName } from "@/features/chat/model-display"
 import {
   CHAT_IMAGE_ACCEPT,
   buildChatImageAttachments,
   getTransferredFiles,
   hasFileTransfer,
 } from "@/features/chat/image-input"
+import { displayModelName } from "@/features/chat/model-display"
 import { turnElapsedMs, turnStartMessage } from "@/features/chat/turn-stats"
 import { useChatModels } from "@/hooks/use-chat-models"
 import { useGateway } from "@/hooks/use-gateway"
@@ -163,9 +163,7 @@ export function ChatPage() {
   const selectedModelName = sessionModelPin ?? defaultModelName
   const selectedModel = useMemo(
     () =>
-      selectableModels.find(
-        (model) => model.model_name === selectedModelName,
-      ),
+      selectableModels.find((model) => model.model_name === selectedModelName),
     [selectableModels, selectedModelName],
   )
   const hasDefaultModel = Boolean(defaultModelName)
@@ -492,6 +490,8 @@ export function ChatPage() {
             <ThinkingSelect
               value={sessionThinkingLevel}
               configuredLevel={selectedModel.thinking_level}
+              defaultLevel={selectedModel.thinking_default_level}
+              levels={selectedModel.thinking_levels}
               disabled={!canInput}
               onValueChange={setSessionThinkingLevel}
             />

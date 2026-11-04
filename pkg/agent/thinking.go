@@ -16,11 +16,13 @@ import (
 type ThinkingLevel string
 
 const (
-	ThinkingOff      ThinkingLevel = "off"
-	ThinkingLow      ThinkingLevel = "low"
-	ThinkingMedium   ThinkingLevel = "medium"
-	ThinkingHigh     ThinkingLevel = "high"
-	ThinkingXHigh    ThinkingLevel = "xhigh"
+	ThinkingOff    ThinkingLevel = "off"
+	ThinkingLow    ThinkingLevel = "low"
+	ThinkingMedium ThinkingLevel = "medium"
+	ThinkingHigh   ThinkingLevel = "high"
+	ThinkingXHigh  ThinkingLevel = "xhigh"
+	// ThinkingMax is the top level some providers name "max".
+	ThinkingMax      ThinkingLevel = "max"
 	ThinkingAdaptive ThinkingLevel = "adaptive"
 )
 
@@ -39,6 +41,8 @@ func parseThinkingLevel(level string) ThinkingLevel {
 		return ThinkingHigh
 	case "xhigh":
 		return ThinkingXHigh
+	case "max":
+		return ThinkingMax
 	default:
 		return ThinkingOff
 	}
@@ -46,7 +50,7 @@ func parseThinkingLevel(level string) ThinkingLevel {
 
 func isConfiguredThinkingLevel(level string) bool {
 	switch strings.ToLower(strings.TrimSpace(level)) {
-	case "off", "low", "medium", "high", "xhigh", "adaptive":
+	case "off", "low", "medium", "high", "xhigh", "max", "adaptive":
 		return true
 	default:
 		return false
