@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sipeed/picoclaw/pkg/config"
 	"github.com/sipeed/picoclaw/pkg/providers"
 )
 
@@ -360,12 +361,14 @@ func TestIdentityUsesConfiguredAssistantName(t *testing.T) {
 		t.Fatalf("header = %q, want the assistant name without the default mascot", firstLine(custom))
 	}
 
+	// The default identity is whatever the build brands itself with, so the assertion
+	// follows the constant instead of a literal product name.
 	defaulted := NewContextBuilder(t.TempDir()).getIdentity(false)
-	if !strings.Contains(defaulted, "You are picoclaw, a helpful AI assistant.") {
-		t.Fatal("default identity changed")
+	if !strings.Contains(defaulted, "You are "+config.DefaultAssistantName+", a helpful AI assistant.") {
+		t.Fatalf("default identity does not use the default assistant name:\n%s", defaulted)
 	}
-	if !strings.HasPrefix(defaulted, "# picoclaw 🦞 (") {
-		t.Fatalf("default header = %q, want the original mascot line", firstLine(defaulted))
+	if !strings.HasPrefix(defaulted, "# "+config.DefaultAssistantName+" 🦞 (") {
+		t.Fatalf("default header = %q, want the mascot line for the default brand", firstLine(defaulted))
 	}
 }
 

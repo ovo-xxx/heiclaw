@@ -37,7 +37,7 @@ import (
 )
 
 const (
-	appName = "PicoClaw"
+	appName = "HeiClaw"
 
 	logPath   = "logs"
 	panicFile = "launcher_panic.log"

@@ -595,7 +595,7 @@ func defaultChannels() ChannelsConfig {
 			"settings": map[string]any{
 				"server":   "",
 				"tls":      true,
-				"nick":     "picoclaw",
+				"nick":     "heiclaw",
 				"channels": []string{},
 			},
 		},

@@ -114,7 +114,13 @@ function LauncherLoginPage() {
       </header>
 
       <div className="flex flex-1 flex-col items-center justify-center gap-6 p-4">
-        <img src={branding.logoUrl} alt={branding.name} className="h-8" />
+        {/* The logo is the hero of this page, and wordmark locks are wide and short:
+            32px made it a footnote above a 448px card. */}
+        <img
+          src={branding.logoUrl}
+          alt={branding.name}
+          className="h-14 w-auto max-w-full"
+        />
 
         <Card className="w-full max-w-md" size="sm">
           <CardHeader>

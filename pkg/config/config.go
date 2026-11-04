@@ -260,9 +260,9 @@ type BrandingConfig struct {
 
 const (
 	// DefaultBrandName is the product name an unconfigured install shows.
-	DefaultBrandName = "PicoClaw"
+	DefaultBrandName = "HeiClaw"
 	// DefaultAssistantName is how the assistant refers to itself by default.
-	DefaultAssistantName = "picoclaw"
+	DefaultAssistantName = "HeiClaw"
 )
 
 // EffectiveName is the product name to display.

@@ -2,14 +2,14 @@ import { useEffect, useState } from "react"
 
 export interface Branding {
   name: string
-  /** What the assistant calls itself: its own name, else the brand, else picoclaw. */
+  /** What the assistant calls itself: its own name, else the brand, else HeiClaw. */
   assistantName: string
   logoUrl: string
 }
 
 const DEFAULT_BRANDING: Branding = {
-  name: "PicoClaw",
-  assistantName: "picoclaw",
+  name: "HeiClaw",
+  assistantName: "HeiClaw",
   logoUrl: "/logo_with_text.png",
 }
 

@@ -154,15 +154,15 @@ func (cb *ContextBuilder) promptRegistryOrDefault() *PromptRegistry {
 func (cb *ContextBuilder) getIdentity(includeToolUseRule bool) string {
 	workspacePath, _ := filepath.Abs(filepath.Join(cb.workspace))
 	version := config.FormatVersion()
-	// The assistant's own name comes from the deployment's branding; an unconfigured
-	// install keeps the original prompt word for word, mascot included.
+	// The assistant's own name comes from the deployment's branding; the default brand
+	// gets the mascot line, a custom brand gets a plain header.
 	assistantName := strings.TrimSpace(cb.assistantName)
 	if assistantName == "" {
 		assistantName = config.DefaultAssistantName
 	}
 	header := fmt.Sprintf("# %s (%s)", assistantName, version)
 	if assistantName == config.DefaultAssistantName {
-		header = fmt.Sprintf("# picoclaw 🦞 (%s)", version)
+		header = fmt.Sprintf("# %s 🦞 (%s)", config.DefaultAssistantName, version)
 	}
 	rules := []string{}
 	if includeToolUseRule {
